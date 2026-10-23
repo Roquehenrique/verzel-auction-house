@@ -1,0 +1,167 @@
+// Monetary values are stored as integer cents (Int) to avoid floating point errors.
+// Timestamps use millisecond precision (Timestamptz(3)) so a value read back from
+// the database is identical to the JS Date that was hashed for the audit chain.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  AUCTIONEER // leiloeiro: creates and manages own lots, cannot bid
+  BIDDER // licitante: deposits, bids and wins lots
+}
+
+enum LedgerEntryType {
+  DEPOSIT // simulated deposit by a bidder
+  PURCHASE // debit from the winner at settlement
+  SALE // credit to the auctioneer at settlement
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  wallet        Wallet?
+  lotsCreated   Lot[]         @relation("LotAuctioneer")
+  lotsLeading   Lot[]         @relation("LotLeader")
+  bids          Bid[]
+  receipts      Receipt[]
+  ledgerEntries LedgerEntry[]
+
+  @@map("users")
+}
+
+// Available balance = balanceCents - committedCents (computed, never stored).
+// committedCents = sum of the bids where this user is the current leader of a live lot.
+// CHECK constraints in the migration guarantee 0 <= committed <= balance.
+model Wallet {
+  userId         String   @id @map("user_id") @db.Uuid
+  balanceCents   Int      @default(0) @map("balance_cents")
+  committedCents Int      @default(0) @map("committed_cents")
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+// Append-only history of real money movements (commit/release are wallet state, not entries).
+model LedgerEntry {
+  id          String          @id @default(uuid()) @db.Uuid
+  userId      String          @map("user_id") @db.Uuid
+  type        LedgerEntryType
+  amountCents Int             @map("amount_cents")
+  lotId       String?         @map("lot_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id])
+  lot  Lot? @relation(fields: [lotId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("ledger_entries")
+}
+
+// Status is derived from time (never stored) except for cancellation:
+//   cancelledAt != null          -> CANCELLED
+//   now <  startsAt              -> SCHEDULED
+//   startsAt <= now < endsAt     -> LIVE
+//   now >= endsAt                -> ENDED (settledAt is set once settlement has run)
+model Lot {
+  id           String @id @default(uuid()) @db.Uuid
+  auctioneerId String @map("auctioneer_id") @db.Uuid
+
+  // Snapshot of the vehicle taken from the external API when the lot is created,
+  // so the app keeps working if the API is down.
+  title          String
+  make           String
+  model          String
+  year           Int
+  description    String?
+  imageUrl       String? @map("image_url")
+  attributes     Json    @default("{}") // extra specs (mileage, color, fuel, ...)
+  externalSource String  @map("external_source")
+  externalId     String? @map("external_id")
+
+  startingBidCents  Int @map("starting_bid_cents")
+  minIncrementCents Int @map("min_increment_cents")
+
+  startsAt       DateTime @map("starts_at") @db.Timestamptz(3)
+  endsAt         DateTime @map("ends_at") @db.Timestamptz(3) // moved forward by anti-sniping
+  originalEndsAt DateTime @map("original_ends_at") @db.Timestamptz(3)
+
+  // Current state of the auction, updated together with each accepted bid
+  // while the lot row is locked (SELECT ... FOR UPDATE).
+  currentBidCents Int?    @map("current_bid_cents")
+  currentLeaderId String? @map("current_leader_id") @db.Uuid
+  bidCount        Int     @default(0) @map("bid_count")
+  lastBidHash     String? @map("last_bid_hash") // head of the hash chain
+
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  settledAt   DateTime? @map("settled_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  auctioneer    User          @relation("LotAuctioneer", fields: [auctioneerId], references: [id])
+  currentLeader User?         @relation("LotLeader", fields: [currentLeaderId], references: [id])
+  bids          Bid[]
+  receipt       Receipt?
+  ledgerEntries LedgerEntry[]
+
+  @@index([auctioneerId])
+  @@index([startsAt])
+  @@index([endsAt])
+  @@map("lots")
+}
+
+// Each bid is a link of a hash chain:
+//   hash = SHA-256(prevHash | lotId | sequence | bidderPseudonym | amountCents | createdAt)
+// and the hash is signed with a server private key kept outside the database.
+model Bid {
+  id              String   @id @default(uuid()) @db.Uuid
+  lotId           String   @map("lot_id") @db.Uuid
+  bidderId        String   @map("bidder_id") @db.Uuid
+  bidderPseudonym String   @map("bidder_pseudonym") // public, non-identifying, per-lot
+  amountCents     Int      @map("amount_cents")
+  sequence        Int // 1, 2, 3... within the lot
+  prevHash        String   @map("prev_hash")
+  hash            String   @unique
+  signature       String
+  createdAt       DateTime @map("created_at") @db.Timestamptz(3)
+
+  lot    Lot  @relation(fields: [lotId], references: [id])
+  bidder User @relation(fields: [bidderId], references: [id])
+
+  @@unique([lotId, sequence])
+  @@index([bidderId])
+  @@map("bids")
+}
+
+// Proof of purchase, shared publicly through shareCode (no personal data exposed).
+model Receipt {
+  id              String   @id @default(uuid()) @db.Uuid
+  lotId           String   @unique @map("lot_id") @db.Uuid
+  winnerId        String   @map("winner_id") @db.Uuid
+  winnerPseudonym String   @map("winner_pseudonym")
+  amountCents     Int      @map("amount_cents")
+  shareCode       String   @unique @map("share_code")
+  chainHeadHash   String   @map("chain_head_hash") // hash of the winning (last) bid
+  signature       String
+  issuedAt        DateTime @default(now()) @map("issued_at") @db.Timestamptz(3)
+
+  lot    Lot  @relation(fields: [lotId], references: [id])
+  winner User @relation(fields: [winnerId], references: [id])
+
+  @@index([winnerId])
+  @@map("receipts")
+}
