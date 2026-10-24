@@ -3,6 +3,7 @@ import { Inter, Rubik } from "next/font/google";
 import { Suspense } from "react";
 import { HeaderShell } from "@/components/layout/brand";
 import { Header } from "@/components/layout/header";
+import { themeScript } from "@/lib/theme-script";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -19,8 +20,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
+      data-theme="light"
+      // The inline theme script changes data-theme before hydration.
+      suppressHydrationWarning
       className={`${inter.variable} ${rubik.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex min-h-full flex-col font-sans">
         <Providers>
           {/* The header reads the current URL (active link): Suspense keeps

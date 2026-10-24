@@ -233,7 +233,7 @@ function Verdict({
       className={`rounded-xl border-2 p-5 ${intact ? "border-lime-500 bg-lime-100" : "border-danger bg-danger-bg"}`}
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</p>
-      <p className={`mt-1 font-heading text-2xl font-bold ${intact ? "text-navy-900" : "text-danger"}`}>
+      <p className={`mt-1 font-heading text-2xl font-bold ${intact ? "text-text" : "text-danger"}`}>
         {intact ? "✓ Histórico íntegro" : "✗ Histórico adulterado"}
       </p>
       <p className="mt-1 text-sm">{description}</p>

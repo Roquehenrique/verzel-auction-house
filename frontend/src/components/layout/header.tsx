@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Brand } from "@/components/layout/brand";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useSocket } from "@/components/realtime/socket-provider";
 import { formatBRL } from "@/lib/format";
 import { useWallet } from "@/lib/queries";
@@ -54,6 +55,7 @@ export function Header() {
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           <span
             title={connected ? "Tempo real conectado" : "Tempo real desconectado"}
             className={`size-2 rounded-full ${connected ? "bg-lime-500" : "bg-white/30"}`}
@@ -90,7 +92,7 @@ export function Header() {
               </Link>
               <Link
                 href="/cadastro"
-                className="rounded-md bg-lime-500 px-3 py-1.5 text-sm font-semibold text-navy-900 hover:bg-lime-600"
+                className="rounded-md bg-lime-500 px-3 py-1.5 text-sm font-semibold text-navy-950 hover:bg-lime-600"
               >
                 Criar conta
               </Link>
@@ -113,6 +115,9 @@ export function Header() {
       {open && (
         <div className="flex flex-col gap-1 border-t border-white/10 px-4 py-3 md:hidden">
           {navLinks}
+          <div className="flex items-center justify-between px-3 py-2 text-sm text-white/80">
+            Tema <ThemeToggle />
+          </div>
           {status === "authenticated" && user ? (
             <button
               onClick={() => {

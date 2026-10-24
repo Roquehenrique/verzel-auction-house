@@ -81,12 +81,12 @@ export function ReceiptView({ params }: { params: Promise<{ code: string }> }) {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted">Valor do arremate</p>
-              <p className="font-heading text-3xl font-bold text-navy-900">{formatBRL(data.amountCents)}</p>
+              <p className="font-heading text-3xl font-bold text-text">{formatBRL(data.amountCents)}</p>
             </div>
             <div
               role="status"
               className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                valid ? "bg-lime-100 text-navy-900 ring-1 ring-lime-500" : "bg-danger-bg text-danger ring-1 ring-danger/40"
+                valid ? "bg-lime-100 text-text ring-1 ring-lime-500" : "bg-danger-bg text-danger ring-1 ring-danger/40"
               }`}
             >
               {valid ? "✓ Assinatura válida" : "✗ Assinatura inválida"}

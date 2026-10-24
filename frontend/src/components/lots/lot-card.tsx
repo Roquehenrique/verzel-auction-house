@@ -74,7 +74,7 @@ function Price({ lot }: { lot: Lot }) {
   return (
     <div>
       <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
-      <p className="font-heading text-xl font-bold text-navy-900">
+      <p className="font-heading text-xl font-bold text-text">
         {formatBRL(lot.currentBidCents ?? lot.startingBidCents)}
       </p>
       <p className="text-xs text-muted">

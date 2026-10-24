@@ -3,7 +3,7 @@ import { Spinner } from "./spinner";
 
 const variants = {
   primary: "bg-navy-900 text-white hover:bg-navy-700",
-  accent: "bg-lime-500 text-navy-900 hover:bg-lime-600",
+  accent: "bg-lime-500 text-navy-950 hover:bg-lime-600",
   outline:
     "border border-border bg-surface text-text hover:bg-surface-muted",
   ghost: "text-text hover:bg-surface-muted",

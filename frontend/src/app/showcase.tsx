@@ -183,7 +183,7 @@ export function Showcase() {
                 {counts.data && (
                   <span
                     className={`rounded-full px-2 text-xs ${
-                      selected ? "bg-lime-500 text-navy-900" : "bg-border text-text"
+                      selected ? "bg-lime-500 text-navy-950" : "bg-border text-text"
                     }`}
                   >
                     {counts.data[tab.value]}

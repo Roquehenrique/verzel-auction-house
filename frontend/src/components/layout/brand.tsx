@@ -3,7 +3,7 @@ import Link from "next/link";
 export function Brand() {
   return (
     <Link href="/" className="flex items-center gap-2">
-      <span className="grid size-8 place-items-center rounded-md bg-lime-500 font-heading text-lg font-bold text-navy-900">
+      <span className="grid size-8 place-items-center rounded-md bg-lime-500 font-heading text-lg font-bold text-navy-950">
         CL
       </span>
       <span className="font-heading text-lg font-bold">

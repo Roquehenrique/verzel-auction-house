@@ -56,7 +56,7 @@ export function PanelView() {
         </div>
         <Link
           href="/painel/novo"
-          className="rounded-lg bg-lime-500 px-5 py-2.5 text-center text-sm font-semibold text-navy-900 hover:bg-lime-600"
+          className="rounded-lg bg-lime-500 px-5 py-2.5 text-center text-sm font-semibold text-navy-950 hover:bg-lime-600"
         >
           + Criar lote
         </Link>

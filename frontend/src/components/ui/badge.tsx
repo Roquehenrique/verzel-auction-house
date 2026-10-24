@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import type { LotStatus } from "@/lib/types";
 
 const tones = {
-  live: "bg-lime-100 text-navy-900 ring-lime-500/40",
-  scheduled: "bg-teal-100 text-navy-900 ring-teal-500/40",
+  live: "bg-lime-100 text-text ring-lime-500/40",
+  scheduled: "bg-teal-100 text-text ring-teal-500/40",
   ended: "bg-surface-muted text-muted ring-border",
   danger: "bg-danger-bg text-danger ring-danger/30",
   purple: "bg-purple-100 text-purple-600 ring-purple-600/30",

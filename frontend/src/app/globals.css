@@ -33,6 +33,37 @@
   --warning-bg: #fff4e0;
 }
 
+/*
+ * Dark theme: only the tokens change. data-theme is set on <html> by an inline
+ * script before the first paint (see ThemeScript), so there is no flash.
+ */
+[data-theme="dark"] {
+  color-scheme: dark; /* native controls (select, date input, scrollbars) */
+
+  --navy-950: #050c18;
+  --navy-900: #1b3a66; /* lighter, so navy buttons stand out on dark surfaces */
+  --navy-800: #15305a;
+  --navy-700: #285089;
+  --lime-100: #26300d;
+  --purple-600: #a99ff0;
+  --purple-100: #29244d;
+  --teal-100: #0c3036;
+
+  --background: #070f1c;
+  --surface: #0f1b2e;
+  --surface-muted: #16253d;
+  --border: #253753;
+  --text: #e6ecf5;
+  --text-muted: #93a1b8;
+
+  --success: #6fcf73;
+  --success-bg: #12301a;
+  --danger: #ff7b7b;
+  --danger-bg: #3a1517;
+  --warning: #f2b24c;
+  --warning-bg: #3a2a0d;
+}
+
 @theme inline {
   --color-navy-950: var(--navy-950);
   --color-navy-900: var(--navy-900);

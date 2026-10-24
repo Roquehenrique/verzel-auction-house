@@ -362,7 +362,7 @@ function LeaderIndicator({ status, lot }: { status: MyLotStatus | undefined; lot
   }
   if (status.isLeader) {
     return (
-      <div role="status" className="rounded-lg bg-lime-500 px-4 py-3 text-navy-900">
+      <div role="status" className="rounded-lg bg-lime-500 px-4 py-3 text-navy-950">
         <p className="font-heading text-lg font-bold">Você está ganhando!</p>
         <p className="text-sm">
           Seu lance de {formatBRL(status.myHighestBidCents!)} lidera
