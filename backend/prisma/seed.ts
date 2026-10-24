@@ -1,7 +1,9 @@
 import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma/client.js';
+import { ConfigService } from '@nestjs/config';
 import { hashPassword } from '../src/auth/password.js';
+import { BidSignerService } from '../src/bids/bid-signer.service.js';
+import { BidsService } from '../src/bids/bids.service.js';
+import { PrismaService } from '../src/prisma/prisma.service.js';
 
 // Demo data: 1 auctioneer, 2 bidders with balance and lots in every state.
 // All dates are relative to the moment the seed runs, so running it again
@@ -26,9 +28,11 @@ if (
   process.exit(1);
 }
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-});
+// The real services are used to place the demo bids, so they follow exactly the
+// same rules (committed balance, hash chain, signature) as bids made in the app.
+const config = new ConfigService(process.env);
+const prisma = new PrismaService(config);
+const bidsService = new BidsService(prisma, new BidSignerService(config));
 
 async function main() {
   const now = Date.now();
@@ -60,8 +64,9 @@ async function main() {
     },
   ];
 
+  const bidderIds: string[] = [];
   for (const bidder of bidders) {
-    await prisma.user.create({
+    const { id } = await prisma.user.create({
       data: {
         name: bidder.name,
         email: bidder.email,
@@ -73,7 +78,9 @@ async function main() {
         },
       },
     });
+    bidderIds.push(id);
   }
+  const [anaId, brunoId] = bidderIds;
 
   const lots = [
     {
@@ -179,8 +186,9 @@ async function main() {
     },
   ];
 
+  const lotIds: Record<string, string> = {};
   for (const lot of lots) {
-    await prisma.lot.create({
+    const { id } = await prisma.lot.create({
       data: {
         ...lot,
         auctioneerId: auctioneer.id,
@@ -188,6 +196,21 @@ async function main() {
         originalEndsAt: lot.endsAt,
       },
     });
+    lotIds[lot.model] = id;
+  }
+
+  // Live lots with an ongoing dispute. The Opala is left without bids so the
+  // first bid can be tried out.
+  const demoBids: Array<[lot: string, bidderId: string, reais: number]> = [
+    ['911 Carrera', anaId, 650_000],
+    ['911 Carrera', brunoId, 660_000],
+    ['911 Carrera', anaId, 680_000], // Ana is winning
+    ['Mustang', brunoId, 180_000],
+    ['Mustang', anaId, 185_000],
+    ['Mustang', brunoId, 190_000], // Bruno is winning
+  ];
+  for (const [lot, bidderId, value] of demoBids) {
+    await bidsService.placeBid(bidderId, lotIds[lot], reais(value));
   }
 
   console.log('Seed completed:');
@@ -195,6 +218,7 @@ async function main() {
   console.log(`  bidders:    ${bidders.map((b) => b.email).join(', ')}`);
   console.log(`  password:   ${DEMO_PASSWORD} (all users)`);
   console.log(`  lots:       ${lots.length}`);
+  console.log(`  bids:       ${demoBids.length}`);
 }
 
 main()

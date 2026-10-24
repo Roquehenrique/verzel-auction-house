@@ -33,6 +33,7 @@ docker compose up -d
 cd backend
 cp .env.example .env
 npm install              # também gera o Prisma Client
+npm run keys:generate    # copie as 2 linhas geradas para o .env
 npm run db:deploy        # aplica as migrations
 npm run db:seed          # dados de demonstração (apaga os dados existentes!)
 npm run start:dev        # http://localhost:3001/api/health
@@ -54,7 +55,7 @@ Todos os usuários usam a senha `Senha@123`.
 | `ana@leilao.dev`       | Licitante | R$ 1.000.000   |
 | `bruno@leilao.dev`     | Licitante | R$ 800.000     |
 
-Lotes criados (datas relativas ao momento em que o seed roda): 3 ao vivo (encerram em 1, 2 e 7 dias), 1 agendado (começa em 1 dia) e 1 já encerrado sem lances. Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
+Lotes criados (datas relativas ao momento em que o seed roda): 3 ao vivo (encerram em 1, 2 e 7 dias), 1 agendado (começa em 1 dia) e 1 já encerrado sem lances. Há disputa em andamento: no **Porsche** a Ana está ganhando (R$ 680.000) e no **Mustang** o Bruno (R$ 190.000); o **Opala** está sem lances. Os lances do seed passam pelo mesmo serviço da aplicação (mesmas regras, hash e assinatura). Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
 
 ## Banco de dados
 
@@ -140,6 +141,51 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 - **Depósito atômico**: um único `UPDATE ... SET balance = balance + valor` com o teto verificado na mesma instrução, e o lançamento no extrato na mesma transação — depósitos simultâneos nunca se sobrescrevem.
 - Limites: de R$ 1,00 a R$ 5.000.000,00 por depósito; saldo total de no máximo R$ 20.000.000,00.
 - Leiloeiros também têm carteira (recebem as vendas), mas não podem depositar, pois não dão lances.
+
+## Lances
+
+| Método | Rota                        | Acesso    | Descrição                                          |
+| ------ | --------------------------- | --------- | -------------------------------------------------- |
+| POST   | `/api/lots/:id/bids`        | licitante | Dá um lance (`{ "amountCents": 6850000000 }`)      |
+| GET    | `/api/lots/:id/bids`        | público   | Histórico de lances (só pseudônimos)              |
+| GET    | `/api/lots/:id/my-status`   | licitante | Se está ganhando, posição e maior lance do usuário |
+
+### Regras (todas no servidor, dentro de uma única transação)
+
+1. **Trava do lote** (`SELECT ... FOR UPDATE`): lances concorrentes no mesmo lote são processados um de cada vez. O relógio é lido **depois** de obter a trava.
+2. **Validações, nesta ordem** — cada recusa responde `422` com `{ code, message }`:
+
+   | `code`                 | Mensagem                                                              |
+   | ---------------------- | --------------------------------------------------------------------- |
+   | `LOT_NOT_STARTED`      | Este lote ainda não foi iniciado                                      |
+   | `LOT_ENDED`            | Este lote já foi encerrado                                            |
+   | `LOT_CANCELLED`        | Este lote foi cancelado                                               |
+   | `ALREADY_WINNING`      | Você já está ganhando este lote                                       |
+   | `BELOW_MINIMUM`        | Lance abaixo do mínimo. O lance precisa ser de pelo menos R$ X        |
+   | `INSUFFICIENT_BALANCE` | Saldo insuficiente. Seu saldo disponível é R$ X                       |
+
+   O primeiro lance deve ser ≥ lance inicial; os seguintes ≥ lance atual + incremento mínimo.
+3. **Trava das carteiras** do licitante e do líder anterior, sempre na mesma ordem (por id), evitando deadlock.
+4. **Saldo comprometido**: o valor do líder anterior volta ao disponível **na mesma transação** em que ele é superado; o novo líder tem o valor comprometido. Vale entre lotes: o mesmo dinheiro não pode cobrir lances em dois lotes.
+5. **Anti-sniping**: lance aceito quando faltam **2 minutos ou menos** muda o fim para **horário do lance + 2 minutos** (interpretação de "estende o fim do lote para +2 minutos"). O fim original continua guardado (`originalEndsAt`) e a resposta indica `extended: true`.
+
+Os testes e2e provam a concorrência de forma determinística: uma conexão separada segura a trava enquanto dois lances são disparados; ao liberar, exatamente um é aceito. Removendo o `FOR UPDATE` do código, esses testes falham.
+
+## Histórico à prova de adulteração
+
+Técnica: **corrente de hashes (hash chain) + assinatura digital Ed25519**.
+
+- Cada lance guarda `sequence` (1, 2, 3…), `prevHash` (hash do lance anterior; o primeiro aponta para `000…0`), `hash` e `signature`.
+- `hash = SHA-256("v1|lotId|sequence|pseudônimo|valorEmCentavos|dataISO|prevHash")`. Alterar qualquer campo muda o hash; remover ou inserir um lance quebra a ligação `prevHash` de todos os seguintes e a numeração.
+- `signature` = assinatura Ed25519 do hash com uma **chave privada que fica fora do banco** (variável `BID_SIGNING_PRIVATE_KEY`). Alguém com acesso ao banco poderia recalcular todos os hashes, mas **não** consegue produzir assinaturas válidas sem a chave. A chave pública é divulgada para que qualquer um verifique.
+- O id do licitante não entra no hash (privacidade). Para que trocar o dono de um lance direto no banco também seja detectado, a verificação no servidor recalcula o pseudônimo a partir do `bidder_id`.
+- O lote guarda `lastBidHash` e `bidCount`, conferidos contra a corrente.
+
+**Limitação**: apagar **todos** os lances de um lote e zerar o lote ao mesmo tempo deixaria uma corrente vazia "válida". Isso é mitigado pelo comprovante de arremate assinado (guarda o hash final da corrente) e pelas notificações em tempo real; uma garantia total exigiria publicar os hashes num local externo (fora do escopo).
+
+## Privacidade
+
+Licitantes aparecem como **"Licitante #A3F9C1"**: um HMAC-SHA256 de `lote:usuário` com o segredo `PSEUDONYM_SECRET`. É estável dentro do lote (dá para acompanhar a disputa) e **diferente entre lotes** (não dá para rastrear a mesma pessoa em leilões diferentes). Ids, nomes e e-mails nunca aparecem no histórico público. Com 6 dígitos hexadecimais há 16,7 milhões de combinações; uma colisão entre dois licitantes do mesmo lote é improvável, mas possível.
 
 ## Testes
 

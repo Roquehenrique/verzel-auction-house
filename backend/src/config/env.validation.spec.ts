@@ -1,8 +1,15 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { validateEnv } from './env.validation.js';
+
+const ed25519 = generateKeyPairSync('ed25519')
+  .privateKey.export({ format: 'der', type: 'pkcs8' })
+  .toString('base64');
 
 const valid = {
   DATABASE_URL: 'postgresql://localhost/db',
   JWT_SECRET: 'a'.repeat(32),
+  BID_SIGNING_PRIVATE_KEY: ed25519,
+  PSEUDONYM_SECRET: 'p'.repeat(32),
 };
 
 describe('validateEnv', () => {
@@ -34,6 +41,28 @@ describe('validateEnv', () => {
     expect(() =>
       validateEnv({ ...valid, JWT_SECRET: placeholder }),
     ).not.toThrow();
+  });
+
+  it('requires a valid Ed25519 signing key for the bid history', () => {
+    expect(() =>
+      validateEnv({ ...valid, BID_SIGNING_PRIVATE_KEY: undefined }),
+    ).toThrow(/BID_SIGNING_PRIVATE_KEY is required/);
+    expect(() =>
+      validateEnv({ ...valid, BID_SIGNING_PRIVATE_KEY: 'bm90LWEta2V5' }),
+    ).toThrow(/must be a base64 PKCS#8 Ed25519 key/);
+
+    const rsa = generateKeyPairSync('rsa', { modulusLength: 1024 })
+      .privateKey.export({ format: 'der', type: 'pkcs8' })
+      .toString('base64');
+    expect(() =>
+      validateEnv({ ...valid, BID_SIGNING_PRIVATE_KEY: rsa }),
+    ).toThrow(/Ed25519/);
+  });
+
+  it('requires a PSEUDONYM_SECRET with at least 32 characters', () => {
+    expect(() => validateEnv({ ...valid, PSEUDONYM_SECRET: 'short' })).toThrow(
+      /PSEUDONYM_SECRET/,
+    );
   });
 
   it('rejects non-positive numeric settings', () => {
