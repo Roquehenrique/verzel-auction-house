@@ -1,8 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 // Shared by main.ts and the e2e tests so both run with the same configuration.
 export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
+
+  // Behind the deploy platform's proxy: use X-Forwarded-For as the client IP
+  // (needed by the login rate limit).
+  (app as NestExpressApplication).set('trust proxy', 1);
 
   app.useGlobalPipes(
     new ValidationPipe({
