@@ -128,6 +128,19 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 - **Cancelamento**: só o dono, só lotes não encerrados e **sem lances**. A linha do lote é travada (`SELECT ... FOR UPDATE`) antes da verificação, então um lance e um cancelamento simultâneos nunca resultam em lote cancelado com lance. Um teste e2e segura a trava numa conexão separada para provar esse comportamento.
 - **Painel do leiloeiro**: cada lote encerrado mostra `SOLD` (arrematado, com o valor), `UNSOLD` (sem lances) ou `AWAITING_SETTLEMENT` (encerrado, aguardando a liquidação automática).
 
+## Carteira
+
+| Método | Rota                   | Acesso    | Descrição                                                      |
+| ------ | ---------------------- | --------- | -------------------------------------------------------------- |
+| GET    | `/api/wallet`          | logado    | Saldo total, comprometido, disponível, lotes que comprometem o saldo e extrato |
+| POST   | `/api/wallet/deposit`  | licitante | Depósito simulado (`{ "amountCents": 150000 }`)                |
+
+- **Disponível = total − comprometido**, sempre calculado (nunca armazenado).
+- **Comprometido** = soma dos lances em que o usuário é o líder atual, em lotes ainda não liquidados. Um lote encerrado continua comprometendo o valor até a liquidação debitá-lo.
+- **Depósito atômico**: um único `UPDATE ... SET balance = balance + valor` com o teto verificado na mesma instrução, e o lançamento no extrato na mesma transação — depósitos simultâneos nunca se sobrescrevem.
+- Limites: de R$ 1,00 a R$ 5.000.000,00 por depósito; saldo total de no máximo R$ 20.000.000,00.
+- Leiloeiros também têm carteira (recebem as vendas), mas não podem depositar, pois não dão lances.
+
 ## Testes
 
 ```bash

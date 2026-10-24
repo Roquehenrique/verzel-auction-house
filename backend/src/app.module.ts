@@ -6,6 +6,7 @@ import { validateEnv } from './config/env.validation.js';
 import { LotsModule } from './lots/lots.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
+import { WalletModule } from './wallet/wallet.module.js';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { VehiclesModule } from './vehicles/vehicles.module.js';
     AuthModule,
     VehiclesModule,
     LotsModule,
+    WalletModule,
   ],
   controllers: [AppController],
 })

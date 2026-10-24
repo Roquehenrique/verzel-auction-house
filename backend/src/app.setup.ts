@@ -14,6 +14,7 @@ export function configureApp(app: INestApplication): void {
       whitelist: true, // strips properties without validation decorators
       forbidNonWhitelisted: true,
       transform: true,
+      stopAtFirstError: true, // one message per field instead of repeated ones
     }),
   );
 
