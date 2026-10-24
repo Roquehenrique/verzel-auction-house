@@ -250,6 +250,20 @@ describe('Lots (e2e)', () => {
     });
   });
 
+  describe('GET /api/lots/makes', () => {
+    it('lists distinct makes of non-cancelled lots, publicly', async () => {
+      const id = auctioneer.user.id;
+      await createLotInDb(app, id, { make: 'Toyota' });
+      await createLotInDb(app, id, { make: 'Toyota' });
+      await createLotInDb(app, id, { make: 'Ford' });
+      await createLotInDb(app, id, { make: 'Fiat', cancelledAt: new Date() });
+
+      const res = await http().get('/api/lots/makes').expect(200);
+
+      expect(res.body).toEqual(['Ford', 'Toyota']);
+    });
+  });
+
   describe('GET /api/lots/:id', () => {
     it('returns a lot even when cancelled (for receipts and audit)', async () => {
       const lot = await createLotInDb(app, auctioneer.user.id, {

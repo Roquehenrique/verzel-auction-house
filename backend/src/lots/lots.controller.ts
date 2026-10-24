@@ -41,6 +41,13 @@ export class LotsController {
     return this.lots.list(query);
   }
 
+  // Makes present in the showcase, for the filter. Declared before ":id".
+  @Public()
+  @Get('makes')
+  makes() {
+    return this.lots.listMakes();
+  }
+
   // Declared before ":id" so "mine" is not taken as a lot id.
   @Roles('AUCTIONEER')
   @Get('mine')

@@ -125,6 +125,17 @@ export class LotsService {
     };
   }
 
+  // Distinct makes of the lots visible in the showcase (not cancelled).
+  async listMakes(): Promise<string[]> {
+    const rows = await this.prisma.lot.findMany({
+      where: { cancelledAt: null },
+      distinct: ['make'],
+      select: { make: true },
+      orderBy: { make: 'asc' },
+    });
+    return rows.map((row) => row.make);
+  }
+
   async findOne(id: string) {
     const lot = await this.prisma.lot.findUnique({
       where: { id },
