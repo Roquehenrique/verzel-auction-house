@@ -16,8 +16,13 @@ const DAY = 24 * HOUR;
 
 const reais = (value: number) => value * 100; // converts R$ to cents
 
-if (process.env.NODE_ENV === 'production' && process.env.SEED_ALLOW_RESET !== 'true') {
-  console.error('Refusing to reset a production database. Set SEED_ALLOW_RESET=true to proceed.');
+if (
+  process.env.NODE_ENV === 'production' &&
+  process.env.SEED_ALLOW_RESET !== 'true'
+) {
+  console.error(
+    'Refusing to reset a production database. Set SEED_ALLOW_RESET=true to proceed.',
+  );
   process.exit(1);
 }
 
@@ -28,7 +33,7 @@ const prisma = new PrismaClient({
 async function main() {
   const now = Date.now();
 
-  await prisma.$executeRaw`TRUNCATE TABLE receipts, bids, ledger_entries, lots, wallets, users`;
+  await prisma.$executeRaw`TRUNCATE TABLE receipts, bids, ledger_entries, lot_images, lots, wallets, users`;
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
 
@@ -43,8 +48,16 @@ async function main() {
   });
 
   const bidders = [
-    { name: 'Ana Licitante', email: 'ana@leilao.dev', deposit: reais(1_000_000) },
-    { name: 'Bruno Licitante', email: 'bruno@leilao.dev', deposit: reais(800_000) },
+    {
+      name: 'Ana Licitante',
+      email: 'ana@leilao.dev',
+      deposit: reais(1_000_000),
+    },
+    {
+      name: 'Bruno Licitante',
+      email: 'bruno@leilao.dev',
+      deposit: reais(800_000),
+    },
   ];
 
   for (const bidder of bidders) {
@@ -55,7 +68,9 @@ async function main() {
         passwordHash,
         role: 'BIDDER',
         wallet: { create: { balanceCents: bidder.deposit } },
-        ledgerEntries: { create: { type: 'DEPOSIT', amountCents: bidder.deposit } },
+        ledgerEntries: {
+          create: { type: 'DEPOSIT', amountCents: bidder.deposit },
+        },
       },
     });
   }
@@ -67,10 +82,16 @@ async function main() {
       make: 'Porsche',
       model: '911 Carrera',
       year: 2025,
-      description: 'Geração 992, conversível, único dono e revisões na concessionária.',
+      description:
+        'Geração 992, conversível, único dono e revisões na concessionária.',
       imageUrl:
         'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/2025_Porsche_992_Carrera_convertible_DSC_7026.jpg/960px-2025_Porsche_992_Carrera_convertible_DSC_7026.jpg',
-      attributes: { mileageKm: 8_500, color: 'Prata', fuel: 'Gasolina', transmission: 'Automático PDK' },
+      attributes: {
+        mileageKm: 8_500,
+        color: 'Prata',
+        fuel: 'Gasolina',
+        transmission: 'Automático PDK',
+      },
       startingBidCents: reais(650_000),
       minIncrementCents: reais(5_000),
       startsAt: new Date(now - HOUR),
@@ -85,7 +106,12 @@ async function main() {
       description: 'Primeira geração, restaurado, motor V8 289.',
       imageUrl:
         'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/1965_Ford_Mustang_2D_Hardtop_Front.jpg/960px-1965_Ford_Mustang_2D_Hardtop_Front.jpg',
-      attributes: { mileageKm: 92_000, color: 'Vermelho', fuel: 'Gasolina', transmission: 'Manual' },
+      attributes: {
+        mileageKm: 92_000,
+        color: 'Vermelho',
+        fuel: 'Gasolina',
+        transmission: 'Manual',
+      },
       startingBidCents: reais(180_000),
       minIncrementCents: reais(2_000),
       startsAt: new Date(now - 2 * HOUR),
@@ -100,7 +126,12 @@ async function main() {
       description: 'Sedã 4 portas, placa preta, documentação em dia.',
       imageUrl:
         'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/1978_Chevrolet_Opala_Deluxe_4dr.jpg/960px-1978_Chevrolet_Opala_Deluxe_4dr.jpg',
-      attributes: { mileageKm: 120_000, color: 'Bege', fuel: 'Gasolina', transmission: 'Manual' },
+      attributes: {
+        mileageKm: 120_000,
+        color: 'Bege',
+        fuel: 'Gasolina',
+        transmission: 'Manual',
+      },
       startingBidCents: reais(45_000),
       minIncrementCents: reais(500),
       startsAt: new Date(now - 30 * 60 * 1000),
@@ -115,7 +146,12 @@ async function main() {
       description: 'Quinta geração, 3.0 turbo, 340 cv.',
       imageUrl:
         'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/2020_Toyota_GR_Supra_%28United_States%29.png/960px-2020_Toyota_GR_Supra_%28United_States%29.png',
-      attributes: { mileageKm: 21_000, color: 'Vermelho', fuel: 'Gasolina', transmission: 'Automático' },
+      attributes: {
+        mileageKm: 21_000,
+        color: 'Vermelho',
+        fuel: 'Gasolina',
+        transmission: 'Automático',
+      },
       startingBidCents: reais(380_000),
       minIncrementCents: reais(3_000),
       startsAt: new Date(now + DAY),
@@ -130,7 +166,12 @@ async function main() {
       description: 'Original de fábrica, motor 1300.',
       imageUrl:
         'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/VW_K%C3%A4fer_Baujahr_1966.jpg/960px-VW_K%C3%A4fer_Baujahr_1966.jpg',
-      attributes: { mileageKm: 150_000, color: 'Azul', fuel: 'Gasolina', transmission: 'Manual' },
+      attributes: {
+        mileageKm: 150_000,
+        color: 'Azul',
+        fuel: 'Gasolina',
+        transmission: 'Manual',
+      },
       startingBidCents: reais(35_000),
       minIncrementCents: reais(500),
       startsAt: new Date(now - 3 * DAY),

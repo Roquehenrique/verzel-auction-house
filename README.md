@@ -108,6 +108,26 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 - A NHTSA cobre o mercado americano a partir de **1981**; anos anteriores e modelos exclusivos do Brasil não existem nela. Os carros antigos do seed (Fusca, Opala, Mustang 1965) são dados de demonstração (`externalSource: "seed"`).
 - A base da NHTSA tem alguns registros curiosos (ex.: réplicas de fabricantes pequenos). Os modelos são buscados pelo **ID** da marca, não pelo nome, porque a busca por nome casa parcialmente ("ford" retornava modelos da "STANFORD CUSTOMS").
 
+## Lotes
+
+| Método | Rota                      | Acesso          | Descrição                                                     |
+| ------ | ------------------------- | --------------- | ------------------------------------------------------------- |
+| POST   | `/api/lots`               | leiloeiro       | Cria um lote a partir de um veículo do catálogo               |
+| GET    | `/api/lots?status=LIVE`   | público         | Vitrine (`LIVE`, `SCHEDULED`, `ENDED`) com `q`, `make`, `page`, `pageSize` |
+| GET    | `/api/lots/:id`           | público         | Detalhe do lote (inclui `serverTime` para a contagem regressiva) |
+| GET    | `/api/lots/:id/image`     | público         | Imagem do lote (cópia guardada no banco)                      |
+| GET    | `/api/lots/mine`          | leiloeiro       | Painel: próprios lotes, resultado de cada um e total recebido |
+| POST   | `/api/lots/:id/cancel`    | leiloeiro dono  | Cancela um lote que ainda não recebeu lances                  |
+
+**Regras**
+
+- **Status calculado pelo relógio do servidor**: agendado (`agora < início`), ao vivo (`início ≤ agora < fim`), encerrado (`agora ≥ fim`). O fim é exclusivo: no instante exato do fim o lote já está encerrado. Lotes cancelados não aparecem na vitrine, mas continuam acessíveis pelo id (comprovantes e auditoria).
+- **Criação**: o front envia `makeId`, `modelId` e `year`; o servidor confere no catálogo e grava os nomes oficiais — não é possível criar lote de um carro que não veio da API. A imagem precisa ser uma das sugeridas (Wikimedia); uma cópia é baixada e guardada no banco (`lot_images`). Se o download falhar, o lote é criado mesmo assim e `/image` redireciona para a URL original.
+- **Agenda**: início agora ou em até 90 dias (1 min de tolerância para "começar agora"); duração de 5 minutos a 30 dias.
+- **Valores** em centavos, de R$ 1,00 a R$ 20.000.000,00 (folga abaixo do limite do `INTEGER` para os lances seguintes).
+- **Cancelamento**: só o dono, só lotes não encerrados e **sem lances**. A linha do lote é travada (`SELECT ... FOR UPDATE`) antes da verificação, então um lance e um cancelamento simultâneos nunca resultam em lote cancelado com lance. Um teste e2e segura a trava numa conexão separada para provar esse comportamento.
+- **Painel do leiloeiro**: cada lote encerrado mostra `SOLD` (arrematado, com o valor), `UNSOLD` (sem lances) ou `AWAITING_SETTLEMENT` (encerrado, aguardando a liquidação automática).
+
 ## Testes
 
 ```bash

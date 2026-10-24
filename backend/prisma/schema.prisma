@@ -117,6 +117,7 @@ model Lot {
   bids          Bid[]
   receipt       Receipt?
   ledgerEntries LedgerEntry[]
+  image         LotImage?
 
   @@index([auctioneerId])
   @@index([startsAt])
@@ -145,6 +146,20 @@ model Bid {
   @@unique([lotId, sequence])
   @@index([bidderId])
   @@map("bids")
+}
+
+// Copy of the lot picture, downloaded when the lot is created, so the app does
+// not depend on the external image server either.
+model LotImage {
+  lotId       String   @id @map("lot_id") @db.Uuid
+  contentType String   @map("content_type")
+  data        Bytes
+  sourceUrl   String   @map("source_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  lot Lot @relation(fields: [lotId], references: [id], onDelete: Cascade)
+
+  @@map("lot_images")
 }
 
 // Cache of external API responses (NHTSA, Wikipedia), persisted so it survives
