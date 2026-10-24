@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -34,9 +38,15 @@ export class ExternalCacheService {
     fetcher,
     unavailableMessage,
   }: GetOrFetchOptions<T>): Promise<CachedResult<T>> {
-    const cached = await this.prisma.externalApiCache.findUnique({ where: { key } });
+    const cached = await this.prisma.externalApiCache.findUnique({
+      where: { key },
+    });
     if (cached && cached.expiresAt > new Date()) {
-      return { data: cached.payload as T, stale: false, fetchedAt: cached.fetchedAt };
+      return {
+        data: cached.payload as T,
+        stale: false,
+        fetchedAt: cached.fetchedAt,
+      };
     }
 
     let data: T;
@@ -46,7 +56,11 @@ export class ExternalCacheService {
       const reason = error instanceof Error ? error.message : String(error);
       if (cached) {
         this.logger.warn(`Serving stale cache for "${key}": ${reason}`);
-        return { data: cached.payload as T, stale: true, fetchedAt: cached.fetchedAt };
+        return {
+          data: cached.payload as T,
+          stale: true,
+          fetchedAt: cached.fetchedAt,
+        };
       }
       this.logger.error(`No cache available for "${key}": ${reason}`);
       throw new ServiceUnavailableException(unavailableMessage);

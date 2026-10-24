@@ -13,8 +13,15 @@ export class AppController {
     try {
       await this.prisma.$queryRaw`SELECT 1`;
     } catch {
-      throw new ServiceUnavailableException({ status: 'error', database: 'down' });
+      throw new ServiceUnavailableException({
+        status: 'error',
+        database: 'down',
+      });
     }
-    return { status: 'ok', database: 'up', timestamp: new Date().toISOString() };
+    return {
+      status: 'ok',
+      database: 'up',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

@@ -23,10 +23,15 @@ export class WikipediaClient {
   private readonly apiUrl: string;
 
   constructor(config: ConfigService) {
-    this.apiUrl = config.get('WIKIPEDIA_API_URL') ?? 'https://en.wikipedia.org/w/api.php';
+    this.apiUrl =
+      config.get('WIKIPEDIA_API_URL') ?? 'https://en.wikipedia.org/w/api.php';
   }
 
-  async searchImages(make: string, model: string, year: number): Promise<VehicleImage[]> {
+  async searchImages(
+    make: string,
+    model: string,
+    year: number,
+  ): Promise<VehicleImage[]> {
     const params = new URLSearchParams({
       action: 'query',
       generator: 'search',
@@ -38,19 +43,29 @@ export class WikipediaClient {
       format: 'json',
       formatversion: '2',
     });
-    const response = await fetchJson<WikipediaSearchResponse>(`${this.apiUrl}?${params}`);
+    const response = await fetchJson<WikipediaSearchResponse>(
+      `${this.apiUrl}?${params}`,
+    );
     if (!response || typeof response !== 'object') {
-      throw new ExternalApiError('Wikipedia returned an unexpected response', false);
+      throw new ExternalApiError(
+        'Wikipedia returned an unexpected response',
+        false,
+      );
     }
 
     const pages = (response.query?.pages ?? [])
-      .filter((page) => page.thumbnail && page.pageimage && !/\.svg$/i.test(page.pageimage)) // skip logos
+      .filter(
+        (page) =>
+          page.thumbnail && page.pageimage && !/\.svg$/i.test(page.pageimage),
+      ) // skip logos
       .sort((a, b) => a.index - b.index);
 
     // Search results also bring related cars (e.g. "Celica" for "Supra"): prefer
     // articles whose title mentions the model, falling back to all results.
     const modelToken = model.split(/\s+/)[0].toLowerCase();
-    const relevant = pages.filter((page) => page.title.toLowerCase().includes(modelToken));
+    const relevant = pages.filter((page) =>
+      page.title.toLowerCase().includes(modelToken),
+    );
     const candidates = relevant.length > 0 ? relevant : pages;
 
     // Different articles often share the same lead image.

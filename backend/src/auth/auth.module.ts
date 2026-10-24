@@ -18,7 +18,9 @@ const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
       useFactory: (config: ConfigService) => ({
         secret: config.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: Number(config.get('JWT_EXPIRES_IN_SECONDS') ?? ONE_DAY_IN_SECONDS),
+          expiresIn: Number(
+            config.get('JWT_EXPIRES_IN_SECONDS') ?? ONE_DAY_IN_SECONDS,
+          ),
         },
       }),
     }),

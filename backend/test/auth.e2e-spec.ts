@@ -52,7 +52,9 @@ describe('Auth (e2e)', () => {
 
     it('stores a password hash, never the plain password', async () => {
       const { user } = await registerUser(app, { password: 'Senha@123' });
-      const stored = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+      const stored = await prisma.user.findUniqueOrThrow({
+        where: { id: user.id },
+      });
       expect(stored.passwordHash).not.toContain('Senha@123');
       expect(stored.passwordHash).toMatch(/^scrypt\$/);
     });
@@ -61,7 +63,12 @@ describe('Auth (e2e)', () => {
       await registerUser(app, { email: 'dup@leilao.dev' });
       const res = await http()
         .post('/api/auth/register')
-        .send({ name: 'Outro', email: 'DUP@leilao.dev', password: 'Senha@123', role: 'BIDDER' })
+        .send({
+          name: 'Outro',
+          email: 'DUP@leilao.dev',
+          password: 'Senha@123',
+          role: 'BIDDER',
+        })
         .expect(409);
       expect(res.body.message).toBe('Este e-mail já está cadastrado');
     });
@@ -107,7 +114,10 @@ describe('Auth (e2e)', () => {
         .send({ email: 'LOGIN@leilao.dev', password: registered.password })
         .expect(200);
       expect(res.body.accessToken).toEqual(expect.any(String));
-      expect(res.body.user).toMatchObject({ email: 'login@leilao.dev', role: 'AUCTIONEER' });
+      expect(res.body.user).toMatchObject({
+        email: 'login@leilao.dev',
+        role: 'AUCTIONEER',
+      });
     });
 
     it('returns the same error for wrong password and unknown e-mail', async () => {
@@ -144,9 +154,16 @@ describe('Auth (e2e)', () => {
 
     it('rejects an invalid or tampered token', async () => {
       const { token } = await registerUser(app);
-      const tampered = token.slice(0, -2) + (token.endsWith('aa') ? 'bb' : 'aa');
-      await http().get('/api/auth/me').set('Authorization', `Bearer ${tampered}`).expect(401);
-      await http().get('/api/auth/me').set('Authorization', 'Bearer abc').expect(401);
+      const tampered =
+        token.slice(0, -2) + (token.endsWith('aa') ? 'bb' : 'aa');
+      await http()
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${tampered}`)
+        .expect(401);
+      await http()
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer abc')
+        .expect(401);
     });
   });
 });

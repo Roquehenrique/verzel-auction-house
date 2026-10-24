@@ -25,7 +25,8 @@ export class NhtsaClient {
   private readonly baseUrl: string;
 
   constructor(config: ConfigService) {
-    this.baseUrl = config.get('NHTSA_API_URL') ?? 'https://vpic.nhtsa.dot.gov/api/vehicles';
+    this.baseUrl =
+      config.get('NHTSA_API_URL') ?? 'https://vpic.nhtsa.dot.gov/api/vehicles';
   }
 
   async getMakes(): Promise<VehicleMake[]> {
@@ -48,7 +49,8 @@ export class NhtsaClient {
     const byName = new Map<string, VehicleModel>();
     for (const model of assertResults(response)) {
       const name = model.Model_Name.trim();
-      if (!byName.has(name.toLowerCase())) byName.set(name.toLowerCase(), { id: model.Model_ID, name });
+      if (!byName.has(name.toLowerCase()))
+        byName.set(name.toLowerCase(), { id: model.Model_ID, name });
     }
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }

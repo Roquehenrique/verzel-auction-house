@@ -13,7 +13,8 @@ const nhtsaModels = {
     { Model_ID: 1, Model_Name: 'Corolla' },
   ],
 };
-const ok = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+const ok = (body: unknown) =>
+  Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
 const down = () => Promise.reject(new TypeError('fetch failed'));
 
 describe('Vehicles catalog (e2e)', () => {
@@ -63,7 +64,9 @@ describe('Vehicles catalog (e2e)', () => {
   it('keeps working with cached data (stale) when the API is down', async () => {
     fetchMock.mockImplementation(() => ok(nhtsaModels));
     await getModels().expect(200);
-    await prisma.externalApiCache.updateMany({ data: { expiresAt: new Date(0) } }); // expire it
+    await prisma.externalApiCache.updateMany({
+      data: { expiresAt: new Date(0) },
+    }); // expire it
 
     fetchMock.mockImplementation(down);
     const res = await getModels().expect(200);

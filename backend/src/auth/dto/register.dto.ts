@@ -26,7 +26,8 @@ export class RegisterDto {
   password: string;
 
   @IsIn(Object.values(Role), {
-    message: 'Perfil inválido: use AUCTIONEER (leiloeiro) ou BIDDER (licitante)',
+    message:
+      'Perfil inválido: use AUCTIONEER (leiloeiro) ou BIDDER (licitante)',
   })
   role: Role;
 }

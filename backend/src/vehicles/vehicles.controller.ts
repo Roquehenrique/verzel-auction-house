@@ -1,6 +1,10 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator.js';
-import { ImagesQueryDto, MakesQueryDto, ModelsQueryDto } from './dto/vehicle-queries.dto.js';
+import {
+  ImagesQueryDto,
+  MakesQueryDto,
+  ModelsQueryDto,
+} from './dto/vehicle-queries.dto.js';
 import { VehiclesService } from './vehicles.service.js';
 
 // Catalog used by the auctioneer to build a lot. Every response has the shape

@@ -39,7 +39,8 @@ export class CircuitBreaker {
       return result;
     } catch (error) {
       this.consecutiveFailures++;
-      if (this.consecutiveFailures >= this.threshold) this.openedAt = this.now();
+      if (this.consecutiveFailures >= this.threshold)
+        this.openedAt = this.now();
       throw error;
     }
   }

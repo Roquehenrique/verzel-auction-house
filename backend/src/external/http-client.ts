@@ -24,14 +24,23 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // (network errors, timeouts, HTTP 5xx and 429).
 export async function fetchJson<T>(
   url: string,
-  { timeoutMs = 5_000, retries = 1, retryDelayMs = 300, headers }: FetchJsonOptions = {},
+  {
+    timeoutMs = 5_000,
+    retries = 1,
+    retryDelayMs = 300,
+    headers,
+  }: FetchJsonOptions = {},
 ): Promise<T> {
   const host = new URL(url).host;
 
   for (let attempt = 0; ; attempt++) {
     try {
       const response = await fetch(url, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...headers },
+        headers: {
+          'User-Agent': USER_AGENT,
+          Accept: 'application/json',
+          ...headers,
+        },
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (!response.ok) {
@@ -43,7 +52,10 @@ export async function fetchJson<T>(
       try {
         return (await response.json()) as T;
       } catch {
-        throw new ExternalApiError(`${host} returned an invalid JSON body`, false);
+        throw new ExternalApiError(
+          `${host} returned an invalid JSON body`,
+          false,
+        );
       }
     } catch (error) {
       const failure = toExternalApiError(error, host, timeoutMs);
@@ -53,10 +65,17 @@ export async function fetchJson<T>(
   }
 }
 
-function toExternalApiError(error: unknown, host: string, timeoutMs: number): ExternalApiError {
+function toExternalApiError(
+  error: unknown,
+  host: string,
+  timeoutMs: number,
+): ExternalApiError {
   if (error instanceof ExternalApiError) return error;
   if (error instanceof Error && error.name === 'TimeoutError') {
-    return new ExternalApiError(`${host} did not respond within ${timeoutMs}ms`, true);
+    return new ExternalApiError(
+      `${host} did not respond within ${timeoutMs}ms`,
+      true,
+    );
   }
   // fetch throws TypeError for network failures (DNS, connection refused...).
   const reason = error instanceof Error ? error.message : String(error);

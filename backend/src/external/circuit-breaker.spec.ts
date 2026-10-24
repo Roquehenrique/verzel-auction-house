@@ -12,7 +12,8 @@ describe('CircuitBreaker', () => {
   });
 
   async function failTimes(times: number) {
-    for (let i = 0; i < times; i++) await expect(breaker.execute(fail)).rejects.toThrow('API down');
+    for (let i = 0; i < times; i++)
+      await expect(breaker.execute(fail)).rejects.toThrow('API down');
   }
 
   it('stays closed below the failure threshold', async () => {
@@ -26,7 +27,9 @@ describe('CircuitBreaker', () => {
     expect(breaker.state).toBe('open');
 
     const operation = vi.fn(succeed);
-    await expect(breaker.execute(operation)).rejects.toBeInstanceOf(CircuitOpenError);
+    await expect(breaker.execute(operation)).rejects.toBeInstanceOf(
+      CircuitOpenError,
+    );
     expect(operation).not.toHaveBeenCalled();
   });
 

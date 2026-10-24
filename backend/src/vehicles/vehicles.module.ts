@@ -7,7 +7,12 @@ import { WikipediaClient } from './wikipedia.client.js';
 
 @Module({
   controllers: [VehiclesController],
-  providers: [VehiclesService, NhtsaClient, WikipediaClient, ExternalCacheService],
+  providers: [
+    VehiclesService,
+    NhtsaClient,
+    WikipediaClient,
+    ExternalCacheService,
+  ],
   exports: [VehiclesService],
 })
 export class VehiclesModule {}

@@ -37,13 +37,17 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwt.verifyAsync<JwtPayload>(token);
       request.user = { id: payload.sub, role: payload.role };
     } catch {
-      throw new UnauthorizedException('Sessão inválida ou expirada. Faça login novamente');
+      throw new UnauthorizedException(
+        'Sessão inválida ou expirada. Faça login novamente',
+      );
     }
     return true;
   }
 }
 
-export function extractBearerToken(header: string | undefined): string | undefined {
+export function extractBearerToken(
+  header: string | undefined,
+): string | undefined {
   const [type, token] = header?.split(' ') ?? [];
   return type === 'Bearer' && token ? token : undefined;
 }

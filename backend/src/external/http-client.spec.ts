@@ -2,7 +2,10 @@ import { ExternalApiError, fetchJson } from './http-client.js';
 
 const URL = 'https://api.example.com/data';
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 describe('fetchJson', () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -19,18 +22,25 @@ describe('fetchJson', () => {
   it('returns the parsed body and identifies the client', async () => {
     fetchMock.mockResolvedValue(json({ ok: true }));
     await expect(fetchJson(URL, options)).resolves.toEqual({ ok: true });
-    const headers = fetchMock.mock.calls[0][1]?.headers as Record<string, string>;
+    const headers = fetchMock.mock.calls[0][1]?.headers as Record<
+      string,
+      string
+    >;
     expect(headers['User-Agent']).toMatch(/LeilaoCarros/);
   });
 
   it('retries a 5xx and succeeds on the second attempt', async () => {
-    fetchMock.mockResolvedValueOnce(json({}, 503)).mockResolvedValueOnce(json({ ok: true }));
+    fetchMock
+      .mockResolvedValueOnce(json({}, 503))
+      .mockResolvedValueOnce(json({ ok: true }));
     await expect(fetchJson(URL, options)).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('retries a 429 (rate limited)', async () => {
-    fetchMock.mockResolvedValueOnce(json({}, 429)).mockResolvedValueOnce(json([]));
+    fetchMock
+      .mockResolvedValueOnce(json({}, 429))
+      .mockResolvedValueOnce(json([]));
     await expect(fetchJson(URL, options)).resolves.toEqual([]);
   });
 
@@ -42,7 +52,9 @@ describe('fetchJson', () => {
 
   it('retries network errors and gives up after the configured retries', async () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'));
-    await expect(fetchJson(URL, options)).rejects.toBeInstanceOf(ExternalApiError);
+    await expect(fetchJson(URL, options)).rejects.toBeInstanceOf(
+      ExternalApiError,
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -55,7 +67,9 @@ describe('fetchJson', () => {
   });
 
   it('does not retry an invalid JSON body', async () => {
-    fetchMock.mockResolvedValue(new Response('<html>maintenance</html>', { status: 200 }));
+    fetchMock.mockResolvedValue(
+      new Response('<html>maintenance</html>', { status: 200 }),
+    );
     await expect(fetchJson(URL, options)).rejects.toThrow('invalid JSON');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

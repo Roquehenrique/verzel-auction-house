@@ -86,7 +86,8 @@ export class AuthService {
       select: publicUserSelect,
     });
     // Valid token but the account no longer exists.
-    if (!user) throw new UnauthorizedException('Sessão inválida. Faça login novamente');
+    if (!user)
+      throw new UnauthorizedException('Sessão inválida. Faça login novamente');
     return user;
   }
 

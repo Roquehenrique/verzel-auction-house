@@ -42,7 +42,9 @@ describe('ExternalCacheService', () => {
   it('calls the API when the entry expired and stores the response', async () => {
     prisma.externalApiCache.findUnique.mockResolvedValue(entry(-1));
 
-    const result = await service.getOrFetch(options(() => Promise.resolve(['fresh'])));
+    const result = await service.getOrFetch(
+      options(() => Promise.resolve(['fresh'])),
+    );
 
     expect(result).toMatchObject({ data: ['fresh'], stale: false });
     expect(prisma.externalApiCache.upsert).toHaveBeenCalledWith(
@@ -53,7 +55,9 @@ describe('ExternalCacheService', () => {
   it('serves the expired entry (stale) when the API fails', async () => {
     prisma.externalApiCache.findUnique.mockResolvedValue(entry(-1));
 
-    const result = await service.getOrFetch(options(() => Promise.reject(new Error('down'))));
+    const result = await service.getOrFetch(
+      options(() => Promise.reject(new Error('down'))),
+    );
 
     expect(result).toMatchObject({ data: ['cached'], stale: true });
     expect(prisma.externalApiCache.upsert).not.toHaveBeenCalled();
@@ -62,7 +66,9 @@ describe('ExternalCacheService', () => {
   it('returns 503 with the friendly message when the API fails and nothing is cached', async () => {
     prisma.externalApiCache.findUnique.mockResolvedValue(null);
 
-    const promise = service.getOrFetch(options(() => Promise.reject(new Error('down'))));
+    const promise = service.getOrFetch(
+      options(() => Promise.reject(new Error('down'))),
+    );
 
     await expect(promise).rejects.toBeInstanceOf(ServiceUnavailableException);
     await expect(promise).rejects.toThrow('Indisponível');

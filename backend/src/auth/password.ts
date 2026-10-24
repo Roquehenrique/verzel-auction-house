@@ -26,7 +26,11 @@ export async function verifyPassword(
   if (algorithm !== 'scrypt' || !saltHex || !hashHex) return false;
 
   const expected = Buffer.from(hashHex, 'hex');
-  const actual = await scryptAsync(password, Buffer.from(saltHex, 'hex'), expected.length);
+  const actual = await scryptAsync(
+    password,
+    Buffer.from(saltHex, 'hex'),
+    expected.length,
+  );
   // Constant-time comparison to avoid timing attacks.
   return timingSafeEqual(actual, expected);
 }

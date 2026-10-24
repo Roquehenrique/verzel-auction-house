@@ -21,13 +21,15 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const roles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const roles = this.reflector.getAllAndOverride<Role[] | undefined>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     if (!roles || roles.length === 0) return true;
 
-    const user = context.switchToHttp().getRequest<Request & { user?: AuthUser }>().user;
+    const user = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>().user;
     if (user && roles.includes(user.role)) return true;
 
     const allowed = roles.map((role) => ROLE_LABELS[role]).join(' ou ');

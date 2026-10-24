@@ -4,7 +4,8 @@ import { filterByRelevance } from './vehicles.service.js';
 import { WikipediaClient } from './wikipedia.client.js';
 
 const config = new ConfigService({});
-const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+const json = (body: unknown) =>
+  new Response(JSON.stringify(body), { status: 200 });
 
 describe('vehicle clients', () => {
   const fetchMock = vi.fn<typeof fetch>();
@@ -66,7 +67,9 @@ describe('vehicle clients', () => {
       index,
       title,
       pageimage: file,
-      thumbnail: file ? { source: `https://thumb.example/${file}?utm_source=api` } : undefined,
+      thumbnail: file
+        ? { source: `https://thumb.example/${file}?utm_source=api` }
+        : undefined,
     });
 
     it('keeps relevant photos, without logos, duplicates or tracking params', async () => {
@@ -98,7 +101,9 @@ describe('vehicle clients', () => {
     });
 
     it('falls back to any result when no title mentions the model', async () => {
-      fetchMock.mockResolvedValue(json({ query: { pages: [page(1, 'Toyota', 'toyota.jpg')] } }));
+      fetchMock.mockResolvedValue(
+        json({ query: { pages: [page(1, 'Toyota', 'toyota.jpg')] } }),
+      );
       const images = await client.searchImages('Toyota', 'Mirai', 2020);
       expect(images).toHaveLength(1);
     });
@@ -110,10 +115,12 @@ describe('vehicle clients', () => {
   });
 
   describe('filterByRelevance', () => {
-    const makes = ['Custom Motors', 'Toyota', 'Aston Martin', 'Tom Cars'].map((name, id) => ({
-      id,
-      name,
-    }));
+    const makes = ['Custom Motors', 'Toyota', 'Aston Martin', 'Tom Cars'].map(
+      (name, id) => ({
+        id,
+        name,
+      }),
+    );
 
     it('ranks prefix matches first, then substrings (alphabetical within a rank)', () => {
       expect(filterByRelevance(makes, 'to').map((make) => make.name)).toEqual([
@@ -126,7 +133,9 @@ describe('vehicle clients', () => {
 
     it('ranks a word starting with the term above a plain substring', () => {
       const withLemon = [...makes, { id: 9, name: 'Alemo' }];
-      expect(filterByRelevance(withLemon, 'mo').map((make) => make.name)).toEqual([
+      expect(
+        filterByRelevance(withLemon, 'mo').map((make) => make.name),
+      ).toEqual([
         'Custom Motors', // word "Motors" starts with "mo"
         'Alemo', // "mo" only in the middle, despite coming first alphabetically
       ]);

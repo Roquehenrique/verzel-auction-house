@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CircuitBreaker } from '../external/circuit-breaker.js';
-import { CachedResult, ExternalCacheService } from '../external/external-cache.service.js';
+import {
+  CachedResult,
+  ExternalCacheService,
+} from '../external/external-cache.service.js';
 import { NhtsaClient } from './nhtsa.client.js';
 import {
   maxVehicleYear,
@@ -44,23 +47,33 @@ export class VehiclesService {
     return { ...result, data: filterByRelevance(result.data, term) };
   }
 
-  getModels(makeId: number, year: number): Promise<CachedResult<VehicleModel[]>> {
+  getModels(
+    makeId: number,
+    year: number,
+  ): Promise<CachedResult<VehicleModel[]>> {
     assertYear(year);
     return this.cache.getOrFetch({
       key: `nhtsa:models:${makeId}:${year}`,
       ttlMs: WEEK_MS,
-      fetcher: () => this.nhtsaBreaker.execute(() => this.nhtsa.getModels(makeId, year)),
+      fetcher: () =>
+        this.nhtsaBreaker.execute(() => this.nhtsa.getModels(makeId, year)),
       unavailableMessage: CATALOG_UNAVAILABLE,
     });
   }
 
-  getImages(make: string, model: string, year: number): Promise<CachedResult<VehicleImage[]>> {
+  getImages(
+    make: string,
+    model: string,
+    year: number,
+  ): Promise<CachedResult<VehicleImage[]>> {
     assertYear(year);
     return this.cache.getOrFetch({
       key: `wikipedia:images:${year}:${make.toLowerCase()}:${model.toLowerCase()}`,
       ttlMs: WEEK_MS,
       fetcher: () =>
-        this.wikipediaBreaker.execute(() => this.wikipedia.searchImages(make, model, year)),
+        this.wikipediaBreaker.execute(() =>
+          this.wikipedia.searchImages(make, model, year),
+        ),
       unavailableMessage: IMAGES_UNAVAILABLE,
     });
   }
@@ -68,7 +81,10 @@ export class VehiclesService {
 
 // "to" -> Toyota first (name starts with the term), then makes with a word
 // starting with it, then any other match ("Custom", "Motors").
-export function filterByRelevance(makes: VehicleMake[], term: string): VehicleMake[] {
+export function filterByRelevance(
+  makes: VehicleMake[],
+  term: string,
+): VehicleMake[] {
   const rank = (name: string) => {
     const lower = name.toLowerCase();
     if (lower.startsWith(term)) return 0;
@@ -85,6 +101,8 @@ export function filterByRelevance(makes: VehicleMake[], term: string): VehicleMa
 function assertYear(year: number): void {
   const max = maxVehicleYear();
   if (year < MIN_VEHICLE_YEAR || year > max) {
-    throw new BadRequestException(`O ano deve estar entre ${MIN_VEHICLE_YEAR} e ${max}`);
+    throw new BadRequestException(
+      `O ano deve estar entre ${MIN_VEHICLE_YEAR} e ${max}`,
+    );
   }
 }

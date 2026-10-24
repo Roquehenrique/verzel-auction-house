@@ -18,6 +18,8 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/api/health')
       .expect(200)
-      .expect((res) => expect(res.body).toMatchObject({ status: 'ok', database: 'up' }));
+      .expect((res) =>
+        expect(res.body).toMatchObject({ status: 'ok', database: 'up' }),
+      );
   });
 });

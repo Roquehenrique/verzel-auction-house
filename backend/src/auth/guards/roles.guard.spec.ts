@@ -19,23 +19,29 @@ describe('RolesGuard', () => {
 
   it('allows any authenticated user when no role is required', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
-    expect(guard.canActivate(contextFor({ id: '1', role: 'BIDDER' }))).toBe(true);
+    expect(guard.canActivate(contextFor({ id: '1', role: 'BIDDER' }))).toBe(
+      true,
+    );
   });
 
   it('allows a user with the required role', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['AUCTIONEER']);
-    expect(guard.canActivate(contextFor({ id: '1', role: 'AUCTIONEER' }))).toBe(true);
+    expect(guard.canActivate(contextFor({ id: '1', role: 'AUCTIONEER' }))).toBe(
+      true,
+    );
   });
 
   it('blocks an auctioneer from a bidder-only route (auctioneers cannot bid)', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['BIDDER']);
-    expect(() => guard.canActivate(contextFor({ id: '1', role: 'AUCTIONEER' }))).toThrow(
-      new ForbiddenException('Ação permitida apenas para licitantes'),
-    );
+    expect(() =>
+      guard.canActivate(contextFor({ id: '1', role: 'AUCTIONEER' })),
+    ).toThrow(new ForbiddenException('Ação permitida apenas para licitantes'));
   });
 
   it('blocks a request without user on a role-restricted route', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['BIDDER']);
-    expect(() => guard.canActivate(contextFor(undefined))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(contextFor(undefined))).toThrow(
+      ForbiddenException,
+    );
   });
 });
