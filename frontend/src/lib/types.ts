@@ -138,6 +138,75 @@ export interface VehicleImage {
   pageUrl: string;
 }
 
+// Public audit (GET /lots/:id/audit)
+export type AuditCheckGroup = "chain" | "bidders" | "lotState" | "rules" | "receipt";
+
+export interface AuditResponse {
+  lot: {
+    id: string;
+    title: string;
+    status: LotStatus;
+    startingBidCents: number;
+    minIncrementCents: number;
+    startsAt: string;
+    endsAt: string;
+    settledAt: string | null;
+    bidCount: number;
+    lastBidHash: string | null;
+  };
+  bids: Array<{
+    sequence: number;
+    bidderPseudonym: string;
+    amountCents: number;
+    createdAt: string;
+    prevHash: string;
+    hash: string;
+    signature: string;
+  }>;
+  receipt: {
+    winnerPseudonym: string;
+    amountCents: number;
+    chainHeadHash: string;
+    issuedAt: string;
+    signature: string;
+    signatureValid: boolean;
+  } | null;
+  verification: {
+    intact: boolean;
+    issues: Array<{ check: AuditCheckGroup; sequence: number | null; problem: string }>;
+    checkedAt: string;
+  };
+}
+
+export interface PublicKeyResponse {
+  algorithm: string;
+  publicKeyPem: string;
+  publicKeyBase64: string;
+  bidHash: { algorithm: string; format: string; genesisPrevHash: string };
+  receiptHash: { algorithm: string; format: string };
+}
+
+export interface ReceiptResponse {
+  shareCode: string;
+  lot: {
+    id: string;
+    title: string;
+    make: string;
+    model: string;
+    year: number;
+    hasImage: boolean;
+    endedAt: string;
+    auctioneer: { name: string };
+  };
+  winnerPseudonym: string;
+  amountCents: number;
+  bidCount: number;
+  chainHeadHash: string;
+  issuedAt: string;
+  signature: string;
+  signatureValid: boolean;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;
