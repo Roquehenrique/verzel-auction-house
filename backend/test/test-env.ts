@@ -19,6 +19,8 @@ export const TEST_ENV = {
   AUTH_RATE_LIMIT: '1000', // tests log in many times
   BID_SIGNING_PRIVATE_KEY: TEST_SIGNING_KEY,
   PSEUDONYM_SECRET: 'e2e-pseudonym-secret-with-32-characters!',
+  // Tests call SettlementService directly instead of waiting for the timer.
+  SETTLEMENT_JOB_ENABLED: 'false',
 };
 
 // Safety net: the e2e tests truncate tables, so refuse anything that is not a test database.

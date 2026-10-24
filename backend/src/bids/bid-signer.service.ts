@@ -3,9 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { createPrivateKey, createPublicKey, KeyObject } from 'node:crypto';
 import {
   computePseudonym,
+  computeReceiptHash,
+  ReceiptData,
   signHash,
   StoredBid,
   verifyBidChain,
+  verifyHashSignature,
 } from './bid-chain.js';
 
 // Holds the secrets of the bid history. They come from the environment and are
@@ -34,6 +37,18 @@ export class BidSignerService {
 
   verifyChain(bids: StoredBid[]) {
     return verifyBidChain(bids, this.publicKey);
+  }
+
+  signReceipt(receipt: ReceiptData): string {
+    return signHash(computeReceiptHash(receipt), this.privateKey);
+  }
+
+  verifyReceipt(receipt: ReceiptData, signature: string): boolean {
+    return verifyHashSignature(
+      computeReceiptHash(receipt),
+      signature,
+      this.publicKey,
+    );
   }
 
   // Published so anyone can verify the signatures without trusting the server.

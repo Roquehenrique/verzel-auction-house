@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { SettlementService } from '../src/settlement/settlement.service.js';
 import {
   createLotInDb,
   createTestApp,
@@ -224,6 +225,39 @@ describe('Realtime (e2e)', () => {
 
     expect(await inRoom).toEqual({ lotId: lot.id });
     expect(await inShowcase).toEqual({ lotId: lot.id });
+  });
+
+  it('announces the end of a lot, notifying the winner privately', async () => {
+    const lot = await createLotInDb(app, auctioneer.user.id);
+    await bid(ana, lot.id, 100_000).expect(201);
+    const past = new Date(Date.now() - 1000);
+    await prisma.lot.update({
+      where: { id: lot.id },
+      data: { endsAt: past, originalEndsAt: past },
+    });
+
+    const viewer = await connect();
+    await emitWithAck(viewer, 'lot:join', { lotId: lot.id });
+    const anaSocket = await connect(ana.token);
+    const brunoSocket = await connect(bruno.token);
+
+    const ended = waitFor(viewer, 'lot:ended');
+    const won = waitFor(anaSocket, 'user:won');
+    const brunoWon = receives(brunoSocket, 'user:won');
+    await app.get(SettlementService).settleDueLots();
+
+    expect(await ended).toMatchObject({
+      lotId: lot.id,
+      sold: true,
+      finalPriceCents: 100_000,
+      winnerPseudonym: expect.stringMatching(/^Licitante #/),
+    });
+    expect(await won).toMatchObject({
+      lotId: lot.id,
+      amountCents: 100_000,
+      shareCode: expect.any(String),
+    });
+    expect(await brunoWon).toBe(false);
   });
 
   it('refuses a connection with an invalid token', async () => {

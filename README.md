@@ -55,7 +55,18 @@ Todos os usuários usam a senha `Senha@123`.
 | `ana@leilao.dev`       | Licitante | R$ 1.000.000   |
 | `bruno@leilao.dev`     | Licitante | R$ 800.000     |
 
-Lotes criados (datas relativas ao momento em que o seed roda): 3 ao vivo (encerram em 1, 2 e 7 dias), 1 agendado (começa em 1 dia) e 1 já encerrado sem lances. Há disputa em andamento: no **Porsche** a Ana está ganhando (R$ 680.000) e no **Mustang** o Bruno (R$ 190.000); o **Opala** está sem lances. Os lances do seed passam pelo mesmo serviço da aplicação (mesmas regras, hash e assinatura). Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
+Lotes criados (datas relativas ao momento em que o seed roda):
+
+| Lote                     | Situação                                                                 |
+| ------------------------ | ------------------------------------------------------------------------ |
+| Porsche 911 Carrera 2025 | Ao vivo (7 dias) — Ana ganhando com R$ 680.000                           |
+| Ford Mustang 1965        | Ao vivo (2 dias) — Bruno ganhando com R$ 190.000                         |
+| Chevrolet Opala 1978     | Ao vivo (1 dia) — sem lances                                             |
+| Toyota GR Supra 2020     | Agendado (começa em 1 dia)                                               |
+| Volkswagen Fusca 1966    | Encerrado sem lances (liquidado pelo job ao subir a API)                 |
+| Fiat Uno 2011            | **Arrematado pela Ana** por R$ 32.000, com comprovante (link impresso pelo seed) |
+
+Os lances e a liquidação do seed passam pelos mesmos serviços da aplicação (mesmas regras, hash, assinatura e comprovante). Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
 
 ## Banco de dados
 
@@ -171,6 +182,28 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 
 Os testes e2e provam a concorrência de forma determinística: uma conexão separada segura a trava enquanto dois lances são disparados; ao liberar, exatamente um é aceito. Removendo o `FOR UPDATE` do código, esses testes falham.
 
+## Liquidação, comprovante e "meus arremates"
+
+| Método | Rota                          | Acesso    | Descrição                                                   |
+| ------ | ----------------------------- | --------- | ----------------------------------------------------------- |
+| GET    | `/api/receipts/:shareCode`    | público   | Comprovante compartilhável (informa se a assinatura é válida) |
+| GET    | `/api/bids/mine`              | licitante | Lotes em que deu lance, situação de cada um e comprovantes  |
+
+**Job de liquidação** (a cada 5 s, `SETTLEMENT_INTERVAL_MS`):
+
+1. Busca lotes com fim ≤ agora, não cancelados e não liquidados.
+2. Para cada um, abre uma transação e trava o lote com `FOR UPDATE SKIP LOCKED` (se um lance está sendo processado nele, pula e tenta na próxima rodada). Confere de novo, sob a trava, se o lote continua encerrado e não liquidado — um lance de último segundo pode tê-lo prorrogado.
+3. **Sem lances**: fecha sem vencedor. **Com lances**: trava as carteiras (mesma ordem dos lances), debita o vencedor (do saldo total e do comprometido), credita o leiloeiro, registra `PURCHASE`/`SALE` no extrato e emite o comprovante.
+4. Após o commit, avisa em tempo real: `lot:ended` (sala e vitrine), `user:won` (vencedor) e `wallet:updated`.
+
+**Idempotente**: rodar várias vezes ou em paralelo (inclusive em mais de uma instância da API) nunca cobra duas vezes — o `settledAt` é conferido sob a trava, o `SKIP LOCKED` evita execuções simultâneas no mesmo lote e o comprovante tem `lot_id` único.
+
+**Comprovante**: link com código aleatório de 128 bits (`/comprovante/:shareCode`). Mostra o carro, o pseudônimo do vencedor, o valor, o número de lances e o **hash final da corrente**, tudo **assinado** com a mesma chave Ed25519 dos lances. Se o comprovante, o número de lances ou o histórico do lote forem alterados depois (inclusive apagando lances), `signatureValid` passa a ser `false`.
+
+**Meus arremates**: para cada lote em que o licitante deu lance — `WINNING`, `OUTBID`, `AWAITING_SETTLEMENT` (encerrado liderando, aguardando o job), `WON` (com link do comprovante), `LOST` ou `CANCELLED`.
+
+> **Limitação conhecida**: o saldo é um `INTEGER` em centavos. O total acumulado de vendas de um leiloeiro fica limitado a R$ 21.474.836,47; acima disso a liquidação falha (registrada no log) e o lote permanece "aguardando liquidação". Para produção real, a coluna seria migrada para `BIGINT`.
+
 ## Tempo real (Socket.IO)
 
 O front conecta no mesmo endereço da API (`io(API_URL, { auth: { token } })`). Sem token, a conexão é anônima (vitrine e salas são públicas); com token inválido ou expirado a conexão é recusada (`connect_error: UNAUTHORIZED`), para o front pedir novo login.
@@ -179,7 +212,9 @@ O front conecta no mesmo endereço da API (`io(API_URL, { auth: { token } })`). 
 | ------------ | ----------------------------------- | --------------------------------------------------------------------------- |
 | `lot:{id}`   | `emit('lot:join', { lotId })`       | `lot:bid` (lance, estado do lote, `extended`, `serverTime`), `lot:cancelled` |
 | `showcase`   | `emit('showcase:join')`             | `showcase:update` (lance atual de cada card), `lot:cancelled`               |
-| `user:{id}`  | automática ao conectar com token    | `user:outbid` (você foi superado), `wallet:updated`                         |
+| `user:{id}`  | automática ao conectar com token    | `user:outbid` (você foi superado), `user:won` (você arrematou), `wallet:updated` |
+
+Ao encerrar, a sala do lote e a vitrine recebem `lot:ended` (`sold`, `winnerPseudonym`, `finalPriceCents`).
 
 - Os eventos são emitidos **depois do commit** da transação: ninguém é avisado de um lance que foi desfeito.
 - Eventos públicos só têm pseudônimos; os avisos pessoais vão apenas para a sala privada do usuário.
@@ -197,7 +232,7 @@ Técnica: **corrente de hashes (hash chain) + assinatura digital Ed25519**.
 - O id do licitante não entra no hash (privacidade). Para que trocar o dono de um lance direto no banco também seja detectado, a verificação no servidor recalcula o pseudônimo a partir do `bidder_id`.
 - O lote guarda `lastBidHash` e `bidCount`, conferidos contra a corrente.
 
-**Limitação**: apagar **todos** os lances de um lote e zerar o lote ao mesmo tempo deixaria uma corrente vazia "válida". Isso é mitigado pelo comprovante de arremate assinado (guarda o hash final da corrente) e pelas notificações em tempo real; uma garantia total exigiria publicar os hashes num local externo (fora do escopo).
+**Limitação**: num lote **ainda não liquidado**, apagar **todos** os lances e zerar o lote ao mesmo tempo deixaria uma corrente vazia "válida". Depois da liquidação isso é detectado, porque o comprovante assinado guarda o hash final e o número de lances. Uma garantia total para lotes em andamento exigiria publicar os hashes num local externo (fora do escopo).
 
 ## Privacidade
 

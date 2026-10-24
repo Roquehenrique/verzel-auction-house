@@ -4,6 +4,7 @@ import { hashPassword } from '../src/auth/password.js';
 import { BidSignerService } from '../src/bids/bid-signer.service.js';
 import { BidsService } from '../src/bids/bids.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { SettlementService } from '../src/settlement/settlement.service.js';
 
 // Demo data: 1 auctioneer, 2 bidders with balance and lots in every state.
 // All dates are relative to the moment the seed runs, so running it again
@@ -32,7 +33,9 @@ if (
 // same rules (committed balance, hash chain, signature) as bids made in the app.
 const config = new ConfigService(process.env);
 const prisma = new PrismaService(config);
-const bidsService = new BidsService(prisma, new BidSignerService(config));
+const signer = new BidSignerService(config);
+const bidsService = new BidsService(prisma, signer);
+const settlementService = new SettlementService(prisma, signer, config);
 
 async function main() {
   const now = Date.now();
@@ -184,6 +187,27 @@ async function main() {
       startsAt: new Date(now - 3 * DAY),
       endsAt: new Date(now - DAY),
     },
+    {
+      // Starts LIVE, receives bids and is then closed and settled below, so a
+      // won lot with its receipt exists right after the seed.
+      title: 'Fiat Uno Attractive 2011',
+      make: 'Fiat',
+      model: 'Uno',
+      year: 2011,
+      description: 'Motor 1.4, completo, segundo dono.',
+      imageUrl:
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/2011_Fiat_Uno_1.4_Attractive.jpg/960px-2011_Fiat_Uno_1.4_Attractive.jpg',
+      attributes: {
+        mileageKm: 88_000,
+        color: 'Vermelho',
+        fuel: 'Flex',
+        transmission: 'Manual',
+      },
+      startingBidCents: reais(30_000),
+      minIncrementCents: reais(1_000),
+      startsAt: new Date(now - 2 * HOUR),
+      endsAt: new Date(now + HOUR),
+    },
   ];
 
   const lotIds: Record<string, string> = {};
@@ -208,10 +232,21 @@ async function main() {
     ['Mustang', brunoId, 180_000],
     ['Mustang', anaId, 185_000],
     ['Mustang', brunoId, 190_000], // Bruno is winning
+    ['Uno', brunoId, 30_000],
+    ['Uno', anaId, 32_000], // Ana wins (lot closed below)
   ];
   for (const [lot, bidderId, value] of demoBids) {
     await bidsService.placeBid(bidderId, lotIds[lot], reais(value));
   }
+
+  // Close the Uno now (after its bids) and settle it with the real service:
+  // Ana is charged, the auctioneer is credited and the signed receipt is issued.
+  const closedAt = new Date();
+  await prisma.lot.update({
+    where: { id: lotIds['Uno'] },
+    data: { endsAt: closedAt, originalEndsAt: closedAt },
+  });
+  const receipt = await settlementService.settleLot(lotIds['Uno']);
 
   console.log('Seed completed:');
   console.log(`  auctioneer: ${auctioneer.email}`);
@@ -219,6 +254,9 @@ async function main() {
   console.log(`  password:   ${DEMO_PASSWORD} (all users)`);
   console.log(`  lots:       ${lots.length}`);
   console.log(`  bids:       ${demoBids.length}`);
+  console.log(
+    `  receipt:    /comprovante/${receipt?.shareCode} (Fiat Uno, Ana)`,
+  );
 }
 
 main()

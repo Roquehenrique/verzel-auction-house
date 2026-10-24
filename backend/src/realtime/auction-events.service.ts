@@ -79,4 +79,39 @@ export class AuctionEventsService {
       .to(SHOWCASE_ROOM)
       .emit('lot:cancelled', { lotId });
   }
+
+  lotEnded(event: {
+    lotId: string;
+    title: string;
+    auctioneerId: string;
+    sold: boolean;
+    winnerId: string | null;
+    winnerPseudonym: string | null;
+    amountCents: number | null;
+    shareCode: string | null;
+  }) {
+    const server = this.server;
+    if (!server) return;
+
+    // Public: no user ids, only the winner's pseudonym.
+    server.to(lotRoom(event.lotId)).to(SHOWCASE_ROOM).emit('lot:ended', {
+      lotId: event.lotId,
+      sold: event.sold,
+      winnerPseudonym: event.winnerPseudonym,
+      finalPriceCents: event.amountCents,
+    });
+
+    if (event.sold && event.winnerId) {
+      server.to(userRoom(event.winnerId)).emit('user:won', {
+        lotId: event.lotId,
+        title: event.title,
+        amountCents: event.amountCents,
+        shareCode: event.shareCode,
+      });
+      server
+        .to(userRoom(event.winnerId))
+        .to(userRoom(event.auctioneerId))
+        .emit('wallet:updated', {});
+    }
+  }
 }

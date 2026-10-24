@@ -6,6 +6,7 @@ import { BidsModule } from './bids/bids.module.js';
 import { validateEnv } from './config/env.validation.js';
 import { LotsModule } from './lots/lots.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { SettlementModule } from './settlement/settlement.module.js';
 import { VehiclesModule } from './vehicles/vehicles.module.js';
 import { WalletModule } from './wallet/wallet.module.js';
 
@@ -18,6 +19,7 @@ import { WalletModule } from './wallet/wallet.module.js';
     LotsModule,
     WalletModule,
     BidsModule,
+    SettlementModule,
   ],
   controllers: [AppController],
 })

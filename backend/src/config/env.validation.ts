@@ -40,7 +40,11 @@ export function validateEnv(config: Record<string, unknown>) {
     );
   }
 
-  for (const key of ['JWT_EXPIRES_IN_SECONDS', 'AUTH_RATE_LIMIT']) {
+  for (const key of [
+    'JWT_EXPIRES_IN_SECONDS',
+    'AUTH_RATE_LIMIT',
+    'SETTLEMENT_INTERVAL_MS',
+  ]) {
     const value = config[key];
     if (value !== undefined && !(Number(value) > 0)) {
       errors.push(`${key} must be a positive number`);

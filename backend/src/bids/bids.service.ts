@@ -219,4 +219,58 @@ export class BidsService {
       totalBidders: ranking.length,
     };
   }
+
+  // "Meus arremates": every lot the user bid on, with the outcome and, for won
+  // lots, the receipt link.
+  async myBids(userId: string) {
+    const now = new Date();
+    const participation = await this.prisma.bid.groupBy({
+      by: ['lotId'],
+      where: { bidderId: userId },
+      _max: { amountCents: true },
+      _count: { _all: true },
+    });
+    const lots = await this.prisma.lot.findMany({
+      where: { id: { in: participation.map((row) => row.lotId) } },
+      include: { ...withAuctioneer, receipt: true },
+      orderBy: { endsAt: 'desc' },
+    });
+    const byLot = new Map(participation.map((row) => [row.lotId, row]));
+
+    return lots.map((lot) => {
+      const mine = byLot.get(lot.id)!;
+      const isLeader = lot.currentLeaderId === userId;
+      const receipt = lot.receipt?.winnerId === userId ? lot.receipt : null;
+      return {
+        lot: toPublicLot(lot, now),
+        myHighestBidCents: mine._max.amountCents,
+        myBidCount: mine._count._all,
+        outcome: myBidOutcome(getLotStatus(lot, now), isLeader, lot.settledAt),
+        receipt: receipt
+          ? { shareCode: receipt.shareCode, amountCents: receipt.amountCents }
+          : null,
+      };
+    });
+  }
+}
+
+type MyBidOutcome =
+  | 'WINNING' // live, currently leading
+  | 'OUTBID' // live, someone bid higher
+  | 'AWAITING_SETTLEMENT' // ended while leading, settlement still running
+  | 'WON' // settled, receipt issued
+  | 'LOST' // ended, someone else won
+  | 'CANCELLED';
+
+function myBidOutcome(
+  status: ReturnType<typeof getLotStatus>,
+  isLeader: boolean,
+  settledAt: Date | null,
+): MyBidOutcome {
+  if (status === 'CANCELLED') return 'CANCELLED';
+  if (status === 'ENDED') {
+    if (!isLeader) return 'LOST';
+    return settledAt ? 'WON' : 'AWAITING_SETTLEMENT';
+  }
+  return isLeader ? 'WINNING' : 'OUTBID';
 }

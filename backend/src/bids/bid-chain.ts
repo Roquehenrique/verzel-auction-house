@@ -81,6 +81,36 @@ export function computePseudonym(
   return `Licitante #${digest.slice(0, 6).toUpperCase()}`;
 }
 
+// Receipt of a won lot. It is signed with the same key and records the head of
+// the bid chain, so deleting or rewriting the history of a settled lot (even all
+// of it) no longer matches the receipt.
+export interface ReceiptData {
+  lotId: string;
+  winnerPseudonym: string;
+  amountCents: number;
+  bidCount: number;
+  chainHeadHash: string;
+  issuedAt: Date;
+}
+
+export function canonicalReceiptString(receipt: ReceiptData): string {
+  return [
+    'receipt-v1',
+    receipt.lotId,
+    receipt.winnerPseudonym,
+    receipt.amountCents,
+    receipt.bidCount,
+    receipt.chainHeadHash,
+    receipt.issuedAt.toISOString(),
+  ].join('|');
+}
+
+export function computeReceiptHash(receipt: ReceiptData): string {
+  return createHash('sha256')
+    .update(canonicalReceiptString(receipt))
+    .digest('hex');
+}
+
 export interface StoredBid extends BidLink {
   hash: string;
   signature: string;
