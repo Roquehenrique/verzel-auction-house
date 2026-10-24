@@ -147,6 +147,17 @@ model Bid {
   @@map("bids")
 }
 
+// Cache of external API responses (NHTSA, Wikipedia), persisted so it survives
+// restarts. Expired entries are still served when the external API is down.
+model ExternalApiCache {
+  key       String   @id
+  payload   Json
+  fetchedAt DateTime @map("fetched_at") @db.Timestamptz(3)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@map("external_api_cache")
+}
+
 // Proof of purchase, shared publicly through shareCode (no personal data exposed).
 model Receipt {
   id              String   @id @default(uuid()) @db.Uuid

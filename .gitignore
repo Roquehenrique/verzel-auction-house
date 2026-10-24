@@ -9,6 +9,9 @@ build/
 coverage/
 *.tsbuildinfo
 
+# Prisma Client (recreated by `prisma generate`)
+backend/src/generated/
+
 # env files (only the .env.example files are committed)
 .env
 .env.*
