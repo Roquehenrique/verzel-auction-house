@@ -275,10 +275,23 @@ Next.js 16 (App Router, Cache Components) com Tailwind CSS 4. Visual com a palet
 
 ## Testes
 
-```bash
-cd backend
-npm test           # testes unitários
-npm run test:e2e   # testes end-to-end (requer o Postgres do docker-compose rodando)
-```
+Todos exigem o Postgres do docker-compose rodando e usam **bancos próprios** — os dados de desenvolvimento nunca são afetados.
 
-Os testes e2e usam um banco separado, `leilao_test`, criado e migrado automaticamente na primeira execução — os dados de desenvolvimento (seed) não são afetados. Por segurança, os testes se recusam a rodar em qualquer banco cujo nome não termine em `_test`. Para usar outro servidor, defina `TEST_DATABASE_URL`.
+| Camada | Ferramenta | Comando | Banco |
+| ------ | ---------- | ------- | ----- |
+| Back-end — unitários | Vitest | `cd backend && npm test` | — |
+| Back-end — integração/API | Vitest + Supertest | `cd backend && npm run test:e2e` | `leilao_test` |
+| Aplicação completa no navegador | Playwright | `cd frontend && npm run test:e2e` | `leilao_e2e` |
+
+**Back-end (Vitest)**: regras de lance, saldo comprometido, anti-sniping, liquidação idempotente, auditoria (cada ataque simulado direto no banco via SQL), tempo real com cliente Socket.IO real e **concorrência determinística** — uma conexão separada segura a trava da linha enquanto lances simultâneos são disparados; removendo o `FOR UPDATE` do código, esses testes falham. Os testes se recusam a rodar em banco cujo nome não termine em `_test` (`TEST_DATABASE_URL` para outro servidor).
+
+**Ponta a ponta (Playwright)**: sobe a API (porta 3101) e o front (porta 3100, build em `.next-e2e`) sozinho e prepara o banco `leilao_e2e` a cada execução (`npm run e2e:prepare` no back-end: migrations + seed + cache do catálogo de veículos, para não depender da NHTSA/Wikipedia). Cobre:
+
+- cadastro, login, rotas protegidas e logout;
+- vitrine (abas, busca, filtro) e atualização dos cards em tempo real;
+- **dois licitantes em sessões separadas disputando o mesmo lote**: recusas com motivo (próprio lance, abaixo do mínimo, saldo insuficiente), depósito, lance válido e a tela do outro mudando para "Você foi superado!" sem recarregar;
+- liberação do saldo comprometido ao vivo e "Meus arremates";
+- painel do leiloeiro: criação de lote pelo catálogo e cancelamento refletido na vitrine de outro visitante;
+- auditoria pública (servidor + navegador) e comprovante aberto por link sem login.
+
+Use `npm run test:e2e:ui` para acompanhar os testes no modo visual do Playwright. Na primeira vez, instale o navegador com `npx playwright install chromium`.
