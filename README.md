@@ -16,18 +16,35 @@ Casa de leilões online de carros: leiloeiros criam lotes a partir de veículos 
 
 ```
 .
-├── backend/            # API NestJS (porta 3001, prefixo /api)
-├── frontend/           # App Next.js (porta 3000)
-└── docker-compose.yml  # PostgreSQL local
+├── backend/            # API NestJS (porta 3001, prefixo /api) + Dockerfile
+├── frontend/           # App Next.js (porta 3000) + Dockerfile + testes Playwright (e2e/)
+└── docker-compose.yml  # PostgreSQL, API e front
 ```
 
-## Rodando localmente
+## Rodando com Docker (mais simples)
+
+Pré-requisito: Docker (Docker Desktop ou Colima).
+
+```bash
+docker compose up --build
+```
+
+Abra **http://localhost:3000** (a API fica em http://localhost:3001/api). Na primeira subida a API, sozinha:
+
+1. gera os segredos (`JWT_SECRET`, chave de assinatura dos lances e segredo dos pseudônimos) e os guarda no volume `api-secrets` — eles não podem mudar depois, senão a auditoria acusaria os lances existentes como adulterados;
+2. cria o banco `leilao_docker`, aplica as migrations e carrega os dados de demonstração (**só se o banco estiver vazio** — reiniciar não apaga nada).
+
+Para recomeçar do zero: `docker compose down -v` (apaga os volumes). Para usar segredos próprios, defina-os em `environment` do serviço `api` no `docker-compose.yml`.
+
+> A stack Docker usa o banco `leilao_docker`, separado do banco `leilao` do desenvolvimento local, cujos lances são assinados com as chaves do `backend/.env`.
+
+## Rodando localmente (desenvolvimento)
 
 Pré-requisitos: Node.js 20.11+ e Docker (Docker Desktop ou Colima).
 
 ```bash
-# 1. Banco de dados
-docker compose up -d
+# 1. Banco de dados (só o PostgreSQL)
+docker compose up -d postgres
 
 # 2. Back-end
 cd backend

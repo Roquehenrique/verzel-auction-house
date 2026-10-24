@@ -1,3 +1,5 @@
+# Whole application:      docker compose up --build   -> http://localhost:3000
+# Only the database (dev): docker compose up -d postgres
 services:
   postgres:
     image: postgres:17-alpine
@@ -17,5 +19,41 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build: ./backend
+    container_name: leilao-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Own database (created on start): keeps the containerized app separate
+      # from the local development database ("leilao"), whose bids are signed
+      # with the keys of backend/.env.
+      DATABASE_URL: postgresql://leilao:leilao@postgres:5432/leilao_docker
+      FRONTEND_URL: http://localhost:3000
+      # JWT_SECRET, BID_SIGNING_PRIVATE_KEY and PSEUDONYM_SECRET may be set
+      # here; otherwise they are generated on the first start and kept in the
+      # api-secrets volume (they must not change afterwards).
+    ports:
+      - '3001:3001'
+    volumes:
+      - api-secrets:/app/secrets
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Called by the BROWSER, so it is the address seen from the host.
+        NEXT_PUBLIC_API_URL: http://localhost:3001/api
+    container_name: leilao-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
 volumes:
   postgres-data:
+  api-secrets:
