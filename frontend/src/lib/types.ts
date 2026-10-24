@@ -105,6 +105,39 @@ export interface MyBidItem {
   receipt: { shareCode: string; amountCents: number } | null;
 }
 
+export type LotResult = "CANCELLED" | "SOLD" | "UNSOLD" | "AWAITING_SETTLEMENT" | null;
+
+export interface MyLotsResponse {
+  items: Array<Lot & { result: LotResult }>;
+  summary: {
+    totalReceivedCents: number;
+    soldCount: number;
+    liveCount: number;
+    scheduledCount: number;
+  };
+  serverTime: string;
+}
+
+// Vehicle catalog (external API, cached by the backend)
+export interface Cached<T> {
+  data: T;
+  stale: boolean; // external API down: cached data is being shown
+  fetchedAt: string;
+}
+
+export interface VehicleMake {
+  id: number;
+  name: string;
+}
+
+export type VehicleModel = VehicleMake;
+
+export interface VehicleImage {
+  url: string;
+  title: string;
+  pageUrl: string;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;

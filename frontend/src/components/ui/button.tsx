@@ -8,6 +8,7 @@ const variants = {
     "border border-border bg-surface text-text hover:bg-surface-muted",
   ghost: "text-text hover:bg-surface-muted",
   danger: "bg-danger text-white hover:opacity-90",
+  "danger-outline": "border border-danger/40 bg-surface text-danger hover:bg-danger-bg",
 };
 
 const sizes = {
@@ -16,6 +17,8 @@ const sizes = {
   lg: "h-12 px-6 text-base",
 };
 
+// Variants own their colors: do not override text-*/bg-* through className
+// (conflicting classes depend on the CSS order).
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof variants;
   size?: keyof typeof sizes;
