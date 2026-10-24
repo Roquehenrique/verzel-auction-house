@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Rubik } from "next/font/google";
+import { Suspense } from "react";
+import { HeaderShell } from "@/components/layout/brand";
 import { Header } from "@/components/layout/header";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -21,7 +23,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col font-sans">
         <Providers>
-          <Header />
+          {/* The header reads the current URL (active link): Suspense keeps
+              the rest of the layout prerendered on dynamic routes. */}
+          <Suspense fallback={<HeaderShell />}>
+            <Header />
+          </Suspense>
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
             {children}
           </main>

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { api, setUnauthorizedHandler, tokenStorage } from "@/lib/api";
 import type { AuthResponse, Role, User } from "@/lib/types";
+import { useHydrated } from "@/lib/use-hydrated";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -120,10 +121,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+const loadingSession = { status: "loading", user: null, token: null } as const;
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside <AuthProvider>");
-  return context;
+  // While THIS component hydrates, report "loading" like the server did.
+  // Components inside Suspense hydrate after the provider already knows the
+  // session; rendering it straight away would not match the server HTML.
+  const hydrated = useHydrated();
+  return hydrated ? context : { ...context, ...loadingSession };
 }
 
 // Where each role lands after logging in.

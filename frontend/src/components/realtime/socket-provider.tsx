@@ -15,6 +15,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/components/ui/toast";
 import { SOCKET_URL } from "@/lib/api";
 import { formatBRL } from "@/lib/format";
+import { useHydrated } from "@/lib/use-hydrated";
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -44,6 +45,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             auth: token ? { token } : {},
             transports: ["websocket", "polling"],
             autoConnect: false,
+            // Always a dedicated connection per session (never a cached one
+            // that could carry the previous session's auth).
+            forceNew: true,
           }),
     [status, token],
   );
@@ -102,7 +106,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 }
 
 export function useSocket(): SocketContextValue {
-  return useContext(SocketContext);
+  const context = useContext(SocketContext);
+  // Like useAuth: while THIS component hydrates, report what the server
+  // rendered (disconnected). React does not patch attribute mismatches during
+  // hydration, so a value that changed earlier would stay stale in the DOM.
+  const hydrated = useHydrated();
+  return hydrated ? context : { ...context, connected: false };
 }
 
 // Joins a room while the component is mounted and joins again after every

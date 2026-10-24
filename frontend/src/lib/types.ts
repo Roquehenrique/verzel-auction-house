@@ -49,6 +49,62 @@ export interface Lot {
   auctioneer: { name: string };
 }
 
+export interface LotDetail extends Lot {
+  serverTime: string;
+}
+
+export interface PublicBid {
+  sequence: number;
+  bidderPseudonym: string;
+  amountCents: number;
+  createdAt: string;
+  hash: string;
+}
+
+export interface BidsResponse {
+  lotId: string;
+  leaderPseudonym: string | null;
+  bids: PublicBid[]; // newest first
+}
+
+export interface MyLotStatus {
+  pseudonym: string;
+  hasBid: boolean;
+  isLeader: boolean;
+  myHighestBidCents: number | null;
+  myBidCount: number;
+  position: number | null;
+  totalBidders: number;
+}
+
+export interface PlaceBidResponse {
+  bid: PublicBid;
+  lot: Lot;
+  extended: boolean;
+}
+
+// "lot:bid" socket event
+export interface LotBidEvent extends PlaceBidResponse {
+  lotId: string;
+  serverTime: string;
+}
+
+export type MyBidOutcome =
+  | "WINNING"
+  | "OUTBID"
+  | "AWAITING_SETTLEMENT"
+  | "WON"
+  | "LOST"
+  | "CANCELLED";
+
+export interface MyBidItem {
+  lot: Lot;
+  myHighestBidCents: number;
+  myBidCount: number;
+  outcome: MyBidOutcome;
+  receipt: { shareCode: string; amountCents: number } | null;
+}
+
 export interface Paginated<T> {
   items: T[];
   total: number;

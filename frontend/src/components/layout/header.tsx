@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { Brand } from "@/components/layout/brand";
 import { useSocket } from "@/components/realtime/socket-provider";
 import { formatBRL } from "@/lib/format";
 import { useWallet } from "@/lib/queries";
@@ -47,15 +48,8 @@ export function Header() {
   return (
     <header className="bg-navy-900 text-white">
       <div className="h-1 w-full bg-teal-500" />
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md bg-lime-500 font-heading text-lg font-bold text-navy-900">
-            CL
-          </span>
-          <span className="font-heading text-lg font-bold">
-            Casa de <span className="text-lime-500">Leilões</span>
-          </span>
-        </Link>
+      <div className="mx-auto flex h-[60px] max-w-6xl items-center justify-between gap-4 px-4">
+        <Brand />
 
         <nav className="hidden items-center gap-1 md:flex">{navLinks}</nav>
 
