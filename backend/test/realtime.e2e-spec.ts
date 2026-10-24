@@ -230,7 +230,7 @@ describe('Realtime (e2e)', () => {
   it('announces the end of a lot, notifying the winner privately', async () => {
     const lot = await createLotInDb(app, auctioneer.user.id);
     await bid(ana, lot.id, 100_000).expect(201);
-    const past = new Date(Date.now() - 1000);
+    const past = new Date(); // ends now, after the bids
     await prisma.lot.update({
       where: { id: lot.id },
       data: { endsAt: past, originalEndsAt: past },

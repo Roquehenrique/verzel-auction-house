@@ -232,6 +232,27 @@ Técnica: **corrente de hashes (hash chain) + assinatura digital Ed25519**.
 - O id do licitante não entra no hash (privacidade). Para que trocar o dono de um lance direto no banco também seja detectado, a verificação no servidor recalcula o pseudônimo a partir do `bidder_id`.
 - O lote guarda `lastBidHash` e `bidCount`, conferidos contra a corrente.
 
+### Auditoria pública (sem login)
+
+| Método | Rota                     | Descrição                                                                  |
+| ------ | ------------------------ | -------------------------------------------------------------------------- |
+| GET    | `/api/lots/:id/audit`    | Histórico completo (com `prevHash`, `hash`, `signature`) e o veredito      |
+| GET    | `/api/audit/public-key`  | Chave pública Ed25519 (PEM e bruta em base64) e o formato exato dos hashes |
+
+O servidor responde `verification: { intact, issues[] }`, onde cada problema indica o grupo de verificação, o lance e a descrição:
+
+| Grupo      | O que confere                                                                                     | Detecta                                         |
+| ---------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `chain`    | Sequência sem buracos, `prevHash` encadeado, hash recalculado = armazenado, assinatura válida     | Valor/data alterados, lance removido ou inserido, hashes recalculados sem a chave |
+| `bidders`  | Pseudônimo recalculado a partir do `bidder_id`                                                     | Lance "transferido" para outro usuário          |
+| `lotState` | Quantidade de lances, último hash, lance atual e líder do lote batem com o fim da corrente        | Último lance apagado, lote editado              |
+| `rules`    | 1º lance ≥ inicial, demais ≥ anterior + incremento, ninguém cobre o próprio lance, horários dentro do período | Regras do lote alteradas depois dos lances      |
+| `receipt`  | Assinatura do comprovante e coerência com o último lance                                          | Comprovante alterado; histórico de lote liquidado apagado |
+
+Além do veredito do servidor, os dados devolvidos permitem que **qualquer pessoa verifique a corrente e as assinaturas por conta própria** só com a chave pública (a página de auditoria faz isso no navegador), sem precisar confiar no servidor. As checagens `bidders` e `rules` dependem de dados internos e são feitas apenas no servidor.
+
+Os testes e2e simulam cada ataque direto no banco (via SQL) e conferem que a auditoria o aponta.
+
 **Limitação**: num lote **ainda não liquidado**, apagar **todos** os lances e zerar o lote ao mesmo tempo deixaria uma corrente vazia "válida". Depois da liquidação isso é detectado, porque o comprovante assinado guarda o hash final e o número de lances. Uma garantia total para lotes em andamento exigiria publicar os hashes num local externo (fora do escopo).
 
 ## Privacidade

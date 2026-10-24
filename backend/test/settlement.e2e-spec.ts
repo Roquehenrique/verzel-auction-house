@@ -56,7 +56,7 @@ describe('Settlement and receipts (e2e)', () => {
 
   // Ends a live lot "now" (as if its time ran out).
   async function endLot(lotId: string) {
-    const past = new Date(Date.now() - 1000);
+    const past = new Date(); // ends now, after the bids
     await prisma.lot.update({
       where: { id: lotId },
       data: { endsAt: past, originalEndsAt: past },
