@@ -1,9 +1,20 @@
 import type { HTMLAttributes } from "react";
 
-export function Card({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
+const tones = {
+  default: "bg-surface",
+  muted: "bg-surface-muted",
+};
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  // Background variant. Do not pass bg-* in className: two background classes
+  // would conflict and the result would depend on the CSS order.
+  tone?: keyof typeof tones;
+}
+
+export function Card({ tone = "default", className = "", ...props }: CardProps) {
   return (
     <div
-      className={`rounded-xl border border-border bg-surface shadow-sm ${className}`}
+      className={`rounded-xl border border-border shadow-sm ${tones[tone]} ${className}`}
       {...props}
     />
   );

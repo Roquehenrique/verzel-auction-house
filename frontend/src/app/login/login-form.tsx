@@ -106,7 +106,7 @@ export function LoginForm() {
         </p>
       </Card>
 
-      <Card className="mt-6 bg-surface-muted p-4">
+      <Card tone="muted" className="mt-6 p-4">
         <p className="text-sm font-semibold">Contas de demonstração</p>
         <p className="mb-3 text-xs text-muted">
           Senha de todas: <code>{DEMO_PASSWORD}</code>
