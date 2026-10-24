@@ -259,6 +259,20 @@ Os testes e2e simulam cada ataque direto no banco (via SQL) e conferem que a aud
 
 Licitantes aparecem como **"Licitante #A3F9C1"**: um HMAC-SHA256 de `lote:usuário` com o segredo `PSEUDONYM_SECRET`. É estável dentro do lote (dá para acompanhar a disputa) e **diferente entre lotes** (não dá para rastrear a mesma pessoa em leilões diferentes). Ids, nomes e e-mails nunca aparecem no histórico público. Com 6 dígitos hexadecimais há 16,7 milhões de combinações; uma colisão entre dois licitantes do mesmo lote é improvável, mas possível.
 
+## Front-end
+
+Next.js 16 (App Router, Cache Components) com Tailwind CSS 4. Visual com a paleta do documento do teste (azul-marinho, verde-limão, roxo e ciano).
+
+| Biblioteca              | Uso                                                              |
+| ----------------------- | ---------------------------------------------------------------- |
+| TanStack Query          | Dados da API (cache, recarga após eventos em tempo real)         |
+| socket.io-client        | Tempo real (uma conexão por aba, reentra nas salas ao reconectar) |
+| react-hook-form + zod   | Formulários com as mesmas regras de validação da API             |
+
+- **Sessão**: o JWT fica no `localStorage`, lido com `useSyncExternalStore` (sair em uma aba encerra a sessão nas outras). Se a API responder 401 (token expirado) ou o WebSocket recusar o token, a sessão é encerrada automaticamente. *Trade-off*: `localStorage` é acessível a scripts da página (risco de XSS); um cookie `httpOnly` seria mais seguro, mas front e API ficam em domínios diferentes no deploy, onde cookies de terceiros costumam ser bloqueados.
+- **Rotas protegidas**: verificação no cliente (redireciona para o login com `?next=`, validado para impedir redirecionamento para outros sites); a API aplica as mesmas regras de acesso.
+- A tela de login tem botões com as **contas de demonstração** do seed.
+
 ## Testes
 
 ```bash

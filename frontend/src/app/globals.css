@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Palette taken from the Verzel technical test document:
+ * navy, lime green, purple and teal. Components use the semantic tokens
+ * (bg-surface, text-muted, ...) so a dark theme only has to redefine them.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --navy-950: #071427;
+  --navy-900: #0b1d36;
+  --navy-800: #12294a;
+  --navy-700: #1c3a63;
+  --lime-500: #a6c516;
+  --lime-600: #8fab0f;
+  --lime-100: #f1f7d6;
+  --purple-600: #554b9e;
+  --purple-100: #ebe9f6;
+  --teal-500: #19a7b5;
+  --teal-100: #dcf3f5;
+
+  --background: #f6f7fa;
+  --surface: #ffffff;
+  --surface-muted: #f3f5f8;
+  --border: #e3e7ee;
+  --text: #0b1d36;
+  --text-muted: #5b6678;
+
+  --success: #2e7d32;
+  --success-bg: #e8f5e9;
+  --danger: #c62828;
+  --danger-bg: #fdecea;
+  --warning: #b26a00;
+  --warning-bg: #fff4e0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-lime-500: var(--lime-500);
+  --color-lime-600: var(--lime-600);
+  --color-lime-100: var(--lime-100);
+  --color-purple-600: var(--purple-600);
+  --color-purple-100: var(--purple-100);
+  --color-teal-500: var(--teal-500);
+  --color-teal-100: var(--teal-100);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-rubik);
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-rubik), sans-serif;
 }
