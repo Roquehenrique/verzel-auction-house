@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { bidPanel, login } from "./helpers";
+import { bidPanel, login, lotIdByTitle, newSession } from "./helpers";
 
 test.describe("Painel do leiloeiro", () => {
   test("mostra o total recebido e o resultado dos lotes", async ({ page }) => {
@@ -44,17 +44,46 @@ test.describe("Painel do leiloeiro", () => {
     await login(page, "auctioneer");
     const row = page.locator("main div.rounded-xl", { hasText: "Toyota GR Supra 2020" }).first();
     await row.getByRole("button", { name: "Cancelar lote" }).click();
-    await row.getByRole("button", { name: "Sim" }).click();
+    await row.getByRole("button", { name: "Confirmar cancelamento" }).click();
     await expect(page.getByText("Lote cancelado").first()).toBeVisible();
 
     await expect(visitor.getByRole("heading", { name: "Toyota GR Supra 2020" })).toBeHidden();
     await visitor.context().close();
   });
 
-  test("lotes com lances não podem ser cancelados", async ({ page }) => {
+  test("lotes encerrados não podem ser cancelados", async ({ page }) => {
     await login(page, "auctioneer");
-    const porsche = page.locator("main div.rounded-xl", { hasText: "Porsche 911" }).first();
-    await expect(porsche).toBeVisible();
-    await expect(porsche.getByRole("button", { name: "Cancelar lote" })).toHaveCount(0);
+    const uno = page.locator("main div.rounded-xl", { hasText: "Fiat Uno" }).first();
+    await expect(uno).toBeVisible();
+    await expect(uno.getByRole("button", { name: "Cancelar lote" })).toHaveCount(0);
+  });
+
+  test("cancela lote com lances: motivo obrigatório e estorno ao líder em tempo real", async ({ browser, page }) => {
+    const opalaId = await lotIdByTitle(/Opala/);
+    const ana = await newSession(browser, "ana");
+    await ana.goto(`/lotes/${opalaId}`);
+    await bidPanel(ana).getByRole("button", { name: /^Mínimo/ }).click();
+    await bidPanel(ana).getByRole("button", { name: "Dar lance" }).click();
+    await expect(bidPanel(ana).getByText("Você está ganhando!")).toBeVisible();
+
+    await login(page, "auctioneer");
+    const row = page.locator("main div.rounded-xl", { hasText: "Chevrolet Opala" }).first();
+    await row.getByRole("button", { name: "Cancelar lote" }).click();
+    await expect(row).toContainText("volta ao saldo disponível dele");
+    const confirm = row.getByRole("button", { name: "Confirmar cancelamento" });
+    await expect(confirm).toBeDisabled(); // reason required
+    await row.getByLabel("Motivo do cancelamento (obrigatório)").fill("Documentação do veículo irregular");
+    await confirm.click();
+    await expect(page.getByText("Lote cancelado").first()).toBeVisible();
+
+    // Ana's room changes by itself, with the reason and the refund notice.
+    await expect(bidPanel(ana)).toContainText("Lote cancelado");
+    await expect(bidPanel(ana)).toContainText("Documentação do veículo irregular");
+    await expect(bidPanel(ana)).toContainText("voltou ao seu saldo disponível");
+    await expect(ana.getByText("Lote cancelado pelo leiloeiro")).toBeVisible();
+
+    await ana.goto("/carteira");
+    await expect(ana.getByText("Nenhum valor comprometido no momento.")).toBeVisible();
+    await ana.context().close();
   });
 });

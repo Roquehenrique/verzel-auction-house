@@ -40,6 +40,8 @@ export function toPublicLot(lot: LotWithAuctioneer, now: Date = new Date()) {
     originalEndsAt: lot.originalEndsAt,
     extended: lot.endsAt > lot.originalEndsAt, // anti-sniping moved the end
     status: getLotStatus(lot, now),
+    cancelledAt: lot.cancelledAt,
+    cancelReason: lot.cancelReason,
     auctioneer: { name: lot.auctioneer.name },
   };
 }

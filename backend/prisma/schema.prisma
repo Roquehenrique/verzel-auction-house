@@ -107,10 +107,11 @@ model Lot {
   bidCount        Int     @default(0) @map("bid_count")
   lastBidHash     String? @map("last_bid_hash") // head of the hash chain
 
-  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(3)
-  settledAt   DateTime? @map("settled_at") @db.Timestamptz(3)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  cancelReason String?   @map("cancel_reason") // required when the lot had bids
+  settledAt    DateTime? @map("settled_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   auctioneer    User          @relation("LotAuctioneer", fields: [auctioneerId], references: [id])
   currentLeader User?         @relation("LotLeader", fields: [currentLeaderId], references: [id])

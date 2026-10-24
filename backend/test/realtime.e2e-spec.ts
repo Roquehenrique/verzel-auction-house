@@ -209,6 +209,37 @@ describe('Realtime (e2e)', () => {
     expect(await got).toBe(false);
   });
 
+  it('cancelling a lot with bids tells the leader privately about the refund', async () => {
+    const lot = await createLotInDb(app, auctioneer.user.id);
+    await bid(ana, lot.id, 100_000).expect(201);
+    const viewer = await connect();
+    await emitWithAck(viewer, 'lot:join', { lotId: lot.id });
+    const anaSocket = await connect(ana.token);
+    const brunoSocket = await connect(bruno.token);
+
+    const inRoom = waitFor(viewer, 'lot:cancelled');
+    const refunded = waitFor(anaSocket, 'user:lot-cancelled');
+    const wallet = waitFor(anaSocket, 'wallet:updated');
+    const brunoNotified = receives(brunoSocket, 'user:lot-cancelled');
+    await request(app.getHttpServer())
+      .post(`/api/lots/${lot.id}/cancel`)
+      .set('Authorization', `Bearer ${auctioneer.token}`)
+      .send({ reason: 'Documentação irregular' })
+      .expect(200);
+
+    expect(await inRoom).toEqual({
+      lotId: lot.id,
+      reason: 'Documentação irregular',
+    });
+    expect(await refunded).toMatchObject({
+      lotId: lot.id,
+      reason: 'Documentação irregular',
+      refundedCents: 100_000,
+    });
+    await wallet;
+    expect(await brunoNotified).toBe(false);
+  });
+
   it('announces a cancelled lot to its room and to the showcase', async () => {
     const lot = await createLotInDb(app, auctioneer.user.id);
     const roomViewer = await connect();
@@ -223,8 +254,8 @@ describe('Realtime (e2e)', () => {
       .set('Authorization', `Bearer ${auctioneer.token}`)
       .expect(200);
 
-    expect(await inRoom).toEqual({ lotId: lot.id });
-    expect(await inShowcase).toEqual({ lotId: lot.id });
+    expect(await inRoom).toEqual({ lotId: lot.id, reason: null });
+    expect(await inShowcase).toEqual({ lotId: lot.id, reason: null });
   });
 
   it('announces the end of a lot, notifying the winner privately', async () => {

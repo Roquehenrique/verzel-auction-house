@@ -46,6 +46,8 @@ export interface Lot {
   originalEndsAt: string;
   extended: boolean;
   status: LotStatus;
+  cancelledAt: string | null;
+  cancelReason: string | null;
   auctioneer: { name: string };
 }
 
@@ -151,6 +153,8 @@ export interface AuditResponse {
     startsAt: string;
     endsAt: string;
     settledAt: string | null;
+    cancelledAt: string | null;
+    cancelReason: string | null;
     bidCount: number;
     lastBidHash: string | null;
   };

@@ -134,6 +134,13 @@ export class AuditService {
       if (bid.createdAt < lot.startsAt || bid.createdAt >= lot.endsAt) {
         add('rules', bid.sequence, 'lance fora do período do lote');
       }
+      if (lot.cancelledAt && bid.createdAt >= lot.cancelledAt) {
+        add(
+          'rules',
+          bid.sequence,
+          'lance registrado depois do cancelamento do lote',
+        );
+      }
     });
 
     // 5. Receipt: signed at settlement with the chain head, so it also protects
@@ -194,6 +201,8 @@ export class AuditService {
         startsAt: lot.startsAt,
         endsAt: lot.endsAt,
         settledAt: lot.settledAt,
+        cancelledAt: lot.cancelledAt,
+        cancelReason: lot.cancelReason,
         bidCount: lot.bidCount,
         lastBidHash: lot.lastBidHash,
       },

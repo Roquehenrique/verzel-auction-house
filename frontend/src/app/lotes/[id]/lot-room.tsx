@@ -282,7 +282,16 @@ function BidPanel(props: BidPanelProps) {
   const { lot, myStatus } = props;
 
   if (lot.status === "CANCELLED") {
-    return <Alert tone="warning" title="Lote cancelado" messages={["Este lote foi cancelado pelo leiloeiro."]} />;
+    return (
+      <Alert
+        tone="warning"
+        title="Lote cancelado"
+        messages={[
+          lot.cancelReason ? `Motivo informado pelo leiloeiro: ${lot.cancelReason}` : "Este lote foi cancelado pelo leiloeiro.",
+          ...(myStatus?.isLeader ? ["O valor que estava reservado para o seu lance voltou ao seu saldo disponível."] : []),
+        ]}
+      />
+    );
   }
 
   if (lot.status === "ENDED") {

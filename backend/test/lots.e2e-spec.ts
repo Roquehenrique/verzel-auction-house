@@ -333,9 +333,13 @@ describe('Lots (e2e)', () => {
       expect(showcase.body.total).toBe(0);
     });
 
-    it('does not cancel a lot that already received bids', async () => {
+    it('requires a reason to cancel a lot that already received bids', async () => {
       const lot = await createLotInDb(app, auctioneer.user.id);
       const bidder = await registerUser(app, { role: 'BIDDER' });
+      await prisma.wallet.update({
+        where: { userId: bidder.user.id },
+        data: { balanceCents: 100_000, committedCents: 100_000 },
+      });
       await prisma.lot.update({
         where: { id: lot.id },
         data: {
@@ -346,10 +350,12 @@ describe('Lots (e2e)', () => {
         },
       });
 
-      const res = await cancel(lot.id).expect(409);
-      expect(res.body.message).toBe(
-        'Não é possível cancelar um lote que já recebeu lances',
-      );
+      const res = await cancel(lot.id).expect(400);
+      expect(res.body.message).toMatch(/Informe o motivo do cancelamento/);
+      expect(
+        (await prisma.lot.findUniqueOrThrow({ where: { id: lot.id } }))
+          .cancelledAt,
+      ).toBeNull();
     });
 
     it('does not cancel an ended lot', async () => {

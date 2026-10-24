@@ -191,8 +191,11 @@ export class LotsService {
     };
   }
 
-  async cancel(auctioneerId: string, lotId: string) {
-    const cancelled = await this.prisma.$transaction(async (tx) => {
+  // Cancels a lot that has not ended. With bids, a reason is required and the
+  // leader's committed amount is released in the same transaction ("estorno":
+  // the money was only reserved, never debited). The bid history is kept.
+  async cancel(auctioneerId: string, lotId: string, reason?: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Locks the lot row: a bid arriving at the same time waits for this
       // transaction (and vice versa), so a cancelled lot can never get a bid.
       await tx.$queryRaw`SELECT id FROM lots WHERE id = ${lotId}::uuid FOR UPDATE`;
@@ -213,21 +216,43 @@ export class LotsService {
         throw new ConflictException('Este lote já foi cancelado');
       if (status === 'ENDED')
         throw new ConflictException('Um lote encerrado não pode ser cancelado');
-      if (lot.bidCount > 0) {
-        throw new ConflictException(
-          'Não é possível cancelar um lote que já recebeu lances',
+      if (lot.bidCount > 0 && !reason) {
+        throw new BadRequestException(
+          'Informe o motivo do cancelamento: o lote já recebeu lances e os licitantes serão avisados',
         );
+      }
+
+      // Refund: the leader's reserved amount goes back to the available balance.
+      let refund: { userId: string; amountCents: number } | null = null;
+      if (lot.currentLeaderId && lot.currentBidCents !== null) {
+        await tx.$queryRaw`
+          SELECT user_id FROM wallets WHERE user_id = ${lot.currentLeaderId}::uuid FOR UPDATE`;
+        await tx.wallet.update({
+          where: { userId: lot.currentLeaderId },
+          data: { committedCents: { decrement: lot.currentBidCents } },
+        });
+        refund = {
+          userId: lot.currentLeaderId,
+          amountCents: lot.currentBidCents,
+        };
       }
 
       const updated = await tx.lot.update({
         where: { id: lotId },
-        data: { cancelledAt: now },
+        data: { cancelledAt: now, cancelReason: reason ?? null },
         include: withAuctioneer,
       });
-      return toPublicLot(updated, now);
+      return { lot: toPublicLot(updated, now), refund };
     });
-    this.events.lotCancelled(lotId); // after the commit
-    return cancelled;
+
+    // After the commit.
+    this.events.lotCancelled({
+      lotId,
+      title: result.lot.title,
+      reason: reason ?? null,
+      refund: result.refund,
+    });
+    return result.lot;
   }
 
   // Names come from the catalog (not from the client) so the lot always matches the API.

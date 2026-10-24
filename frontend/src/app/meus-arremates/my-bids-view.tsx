@@ -131,6 +131,9 @@ function MyBidRow({ item }: { item: MyBidItem }) {
             </>
           )}
         </p>
+        {outcome === "CANCELLED" && lot.cancelReason && (
+          <p className="text-sm text-muted">Motivo do cancelamento: {lot.cancelReason}</p>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">

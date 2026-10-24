@@ -71,13 +71,29 @@ export class AuctionEventsService {
     }
   }
 
-  lotCancelled(lotId: string) {
+  lotCancelled(event: {
+    lotId: string;
+    title: string;
+    reason: string | null;
+    refund: { userId: string; amountCents: number } | null;
+  }) {
     const server = this.server;
     if (!server) return;
     server
-      .to(lotRoom(lotId))
+      .to(lotRoom(event.lotId))
       .to(SHOWCASE_ROOM)
-      .emit('lot:cancelled', { lotId });
+      .emit('lot:cancelled', { lotId: event.lotId, reason: event.reason });
+
+    // The leader's reserved amount was released: tell them privately.
+    if (event.refund) {
+      server.to(userRoom(event.refund.userId)).emit('user:lot-cancelled', {
+        lotId: event.lotId,
+        title: event.title,
+        reason: event.reason,
+        refundedCents: event.refund.amountCents,
+      });
+      server.to(userRoom(event.refund.userId)).emit('wallet:updated', {});
+    }
   }
 
   lotEnded(event: {

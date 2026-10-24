@@ -15,6 +15,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
+import { CancelLotDto } from './dto/cancel-lot.dto.js';
 import { CreateLotDto } from './dto/create-lot.dto.js';
 import { ListLotsDto } from './dto/list-lots.dto.js';
 import { LotsService } from './lots.service.js';
@@ -83,7 +84,11 @@ export class LotsController {
   @Roles('AUCTIONEER')
   @Post(':id/cancel')
   @HttpCode(200)
-  cancel(@CurrentUser() user: AuthUser, @Param('id', LotIdPipe) id: string) {
-    return this.lots.cancel(user.id, id);
+  cancel(
+    @CurrentUser() user: AuthUser,
+    @Param('id', LotIdPipe) id: string,
+    @Body() dto: CancelLotDto,
+  ) {
+    return this.lots.cancel(user.id, id, dto.reason);
   }
 }

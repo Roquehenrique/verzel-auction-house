@@ -146,7 +146,7 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 | GET    | `/api/lots/:id`           | público         | Detalhe do lote (inclui `serverTime` para a contagem regressiva) |
 | GET    | `/api/lots/:id/image`     | público         | Imagem do lote (cópia guardada no banco)                      |
 | GET    | `/api/lots/mine`          | leiloeiro       | Painel: próprios lotes, resultado de cada um e total recebido |
-| POST   | `/api/lots/:id/cancel`    | leiloeiro dono  | Cancela um lote que ainda não recebeu lances                  |
+| POST   | `/api/lots/:id/cancel`    | leiloeiro dono  | Cancela um lote não encerrado (`{ "reason": "..." }` obrigatório se já tiver lances) |
 
 **Regras**
 
@@ -154,7 +154,9 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 - **Criação**: o front envia `makeId`, `modelId` e `year`; o servidor confere no catálogo e grava os nomes oficiais — não é possível criar lote de um carro que não veio da API. A imagem precisa ser uma das sugeridas (Wikimedia); uma cópia é baixada e guardada no banco (`lot_images`). Se o download falhar, o lote é criado mesmo assim e `/image` redireciona para a URL original.
 - **Agenda**: início agora ou em até 90 dias (1 min de tolerância para "começar agora"); duração de 5 minutos a 30 dias.
 - **Valores** em centavos, de R$ 1,00 a R$ 20.000.000,00 (folga abaixo do limite do `INTEGER` para os lances seguintes).
-- **Cancelamento**: só o dono, só lotes não encerrados e **sem lances**. A linha do lote é travada (`SELECT ... FOR UPDATE`) antes da verificação, então um lance e um cancelamento simultâneos nunca resultam em lote cancelado com lance. Um teste e2e segura a trava numa conexão separada para provar esse comportamento.
+- **Cancelamento**: só o dono e só lotes **não encerrados** (mesmo antes da liquidação). A linha do lote é travada (`SELECT ... FOR UPDATE`) antes da verificação, então lance e cancelamento simultâneos são sempre processados um de cada vez — um teste e2e segura a trava numa conexão separada para provar isso.
+  - **Sem lances**: cancelamento direto (motivo opcional) — é o requisito base do painel.
+  - **Com lances — cancelamento com estorno automático (opcional do desafio)**: o **motivo é obrigatório** (5 a 300 caracteres). Na mesma transação, o valor comprometido do líder **volta ao saldo disponível** (o dinheiro estava apenas reservado, nunca foi debitado). O histórico de lances é mantido e continua íntegro na auditoria, que passa a acusar qualquer lance com horário posterior ao cancelamento. A sala e a vitrine recebem `lot:cancelled` com o motivo; o líder recebe o aviso privado `user:lot-cancelled` com o valor liberado. Lotes encerrados não podem ser cancelados: a liquidação já é o desfecho deles.
 - **Painel do leiloeiro**: cada lote encerrado mostra `SOLD` (arrematado, com o valor), `UNSOLD` (sem lances) ou `AWAITING_SETTLEMENT` (encerrado, aguardando a liquidação automática).
 
 ## Carteira
@@ -229,7 +231,7 @@ O front conecta no mesmo endereço da API (`io(API_URL, { auth: { token } })`). 
 | ------------ | ----------------------------------- | --------------------------------------------------------------------------- |
 | `lot:{id}`   | `emit('lot:join', { lotId })`       | `lot:bid` (lance, estado do lote, `extended`, `serverTime`), `lot:cancelled` |
 | `showcase`   | `emit('showcase:join')`             | `showcase:update` (lance atual de cada card), `lot:cancelled`               |
-| `user:{id}`  | automática ao conectar com token    | `user:outbid` (você foi superado), `user:won` (você arrematou), `wallet:updated` |
+| `user:{id}`  | automática ao conectar com token    | `user:outbid` (você foi superado), `user:won` (você arrematou), `user:lot-cancelled` (estorno), `wallet:updated` |
 
 Ao encerrar, a sala do lote e a vitrine recebem `lot:ended` (`sold`, `winnerPseudonym`, `finalPriceCents`).
 
@@ -308,7 +310,7 @@ Todos exigem o Postgres do docker-compose rodando e usam **bancos próprios** �
 - vitrine (abas, busca, filtro) e atualização dos cards em tempo real;
 - **dois licitantes em sessões separadas disputando o mesmo lote**: recusas com motivo (próprio lance, abaixo do mínimo, saldo insuficiente), depósito, lance válido e a tela do outro mudando para "Você foi superado!" sem recarregar;
 - liberação do saldo comprometido ao vivo e "Meus arremates";
-- painel do leiloeiro: criação de lote pelo catálogo e cancelamento refletido na vitrine de outro visitante;
+- painel do leiloeiro: criação de lote pelo catálogo, cancelamento refletido na vitrine de outro visitante e **cancelamento com lances**: motivo obrigatório e a tela do líder mostrando o cancelamento e o estorno sem recarregar;
 - auditoria pública (servidor + navegador) e comprovante aberto por link sem login.
 
 Use `npm run test:e2e:ui` para acompanhar os testes no modo visual do Playwright. Na primeira vez, instale o navegador com `npx playwright install chromium`.

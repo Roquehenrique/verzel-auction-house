@@ -82,12 +82,25 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["my-bids"] });
     };
 
+    // The lot I was leading was cancelled: my reserved amount was refunded.
+    const onLotCancelled = (event: { title: string; reason: string | null; refundedCents: number }) => {
+      toast.show({
+        tone: "info",
+        title: "Lote cancelado pelo leiloeiro",
+        description: `${event.title}: ${formatBRL(event.refundedCents)} voltaram ao seu saldo disponível.${
+          event.reason ? ` Motivo: ${event.reason}` : ""
+        }`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["my-bids"] });
+    };
+
     instance.on("connect", onConnect);
     instance.on("disconnect", onDisconnect);
     instance.on("connect_error", onConnectError);
     instance.on("wallet:updated", onWalletUpdated);
     instance.on("user:outbid", onOutbid);
     instance.on("user:won", onWon);
+    instance.on("user:lot-cancelled", onLotCancelled);
     instance.connect();
 
     return () => {
@@ -97,6 +110,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       instance.off("wallet:updated", onWalletUpdated);
       instance.off("user:outbid", onOutbid);
       instance.off("user:won", onWon);
+      instance.off("user:lot-cancelled", onLotCancelled);
       instance.disconnect(); // fires "disconnect" -> connected = false
     };
   }, [socket, logout, queryClient, toast]);

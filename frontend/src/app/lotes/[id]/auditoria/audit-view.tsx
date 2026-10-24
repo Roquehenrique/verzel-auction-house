@@ -84,6 +84,12 @@ export function AuditView({ params }: { params: Promise<{ id: string }> }) {
           {lot.title} · {bids.length} {bids.length === 1 ? "lance" : "lances"} · verificado em{" "}
           {formatDateTime(verification.checkedAt)}
         </p>
+        {lot.cancelledAt && (
+          <p className="mt-1 text-sm text-warning">
+            Lote cancelado em {formatDateTime(lot.cancelledAt)}
+            {lot.cancelReason && ` · motivo: ${lot.cancelReason}`}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

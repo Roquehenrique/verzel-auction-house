@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { inputClass } from "@/components/ui/field";
 import { PageLoading } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/toast";
 import { api, errorMessages } from "@/lib/api";
@@ -106,20 +107,35 @@ const results: Record<Exclude<LotResult, null>, { label: string; tone: "success"
   CANCELLED: { label: "Cancelado", tone: "danger" },
 };
 
-// Same rule as the API: only lots that have not ended and have no bids.
-const canCancel = (lot: Lot) =>
-  (lot.status === "LIVE" || lot.status === "SCHEDULED") && lot.bidCount === 0;
+// Same rule as the API: lots that have not ended. With bids, a reason is
+// required and the leader's committed amount is refunded.
+const canCancel = (lot: Lot) => lot.status === "LIVE" || lot.status === "SCHEDULED";
+const MIN_REASON = 5;
 
 function PanelRow({ lot }: { lot: PanelLot }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
+  const hasBids = lot.bidCount > 0;
+  const reasonMissing = hasBids && reason.trim().length < MIN_REASON;
 
   const cancel = useMutation({
-    mutationFn: () => api<Lot>(`/lots/${lot.id}/cancel`, { method: "POST" }),
+    mutationFn: () =>
+      api<Lot>(`/lots/${lot.id}/cancel`, {
+        method: "POST",
+        body: reason.trim() ? { reason: reason.trim() } : {},
+      }),
     onSuccess: () => {
       setConfirming(false);
-      toast.show({ tone: "info", title: "Lote cancelado", description: `${lot.title} saiu da vitrine.` });
+      setReason("");
+      toast.show({
+        tone: "info",
+        title: "Lote cancelado",
+        description: hasBids
+          ? `${lot.title} saiu da vitrine. O valor reservado do líder foi liberado.`
+          : `${lot.title} saiu da vitrine.`,
+      });
       queryClient.invalidateQueries({ queryKey: ["my-lots"] });
       queryClient.invalidateQueries({ queryKey: ["lots"] });
     },
@@ -133,7 +149,7 @@ function PanelRow({ lot }: { lot: PanelLot }) {
   const result = lot.result && lot.result !== "CANCELLED" ? results[lot.result] : null;
 
   return (
-    <Card className="flex flex-col gap-4 p-4 md:flex-row md:items-center">
+    <Card className="flex flex-col gap-4 p-4 md:flex-row md:flex-wrap md:items-center">
       <Link href={`/lotes/${lot.id}`} className="shrink-0">
         <LotImage lotId={lot.id} hasImage={lot.hasImage} alt={lot.title} className="aspect-[16/10] w-full rounded-lg md:w-36" />
       </Link>
@@ -179,23 +195,54 @@ function PanelRow({ lot }: { lot: PanelLot }) {
         >
           Ver sala
         </Link>
-        {canCancel(lot) &&
-          (confirming ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted">Cancelar?</span>
-              <Button size="sm" variant="danger" loading={cancel.isPending} onClick={() => cancel.mutate()}>
-                Sim
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-                Não
-              </Button>
-            </div>
-          ) : (
-            <Button size="md" variant="danger-outline" onClick={() => setConfirming(true)}>
-              Cancelar lote
-            </Button>
-          ))}
+        {canCancel(lot) && !confirming && (
+          <Button size="md" variant="danger-outline" onClick={() => setConfirming(true)}>
+            Cancelar lote
+          </Button>
+        )}
       </div>
+
+      {confirming && (
+        <div className="flex w-full flex-col gap-3 rounded-lg border border-danger/30 bg-danger-bg p-4 md:basis-full">
+          <p className="text-sm font-semibold text-danger">Cancelar “{lot.title}”?</p>
+          {hasBids ? (
+            <>
+              <p className="text-sm">
+                O lote tem {lot.bidCount} {lot.bidCount === 1 ? "lance" : "lances"}. O valor reservado do líder
+                ({formatBRL(lot.currentBidCents!)}) volta ao saldo disponível dele e os licitantes serão avisados.
+              </p>
+              <label htmlFor={`reason-${lot.id}`} className="text-sm font-medium">
+                Motivo do cancelamento (obrigatório)
+              </label>
+              <textarea
+                id={`reason-${lot.id}`}
+                rows={2}
+                maxLength={300}
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Ex.: veículo retirado pelo proprietário"
+                className={`${inputClass} h-auto py-2`}
+              />
+            </>
+          ) : (
+            <p className="text-sm">O lote ainda não recebeu lances e sairá da vitrine.</p>
+          )}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="danger"
+              loading={cancel.isPending}
+              disabled={reasonMissing}
+              onClick={() => cancel.mutate()}
+            >
+              Confirmar cancelamento
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
+              Voltar
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
