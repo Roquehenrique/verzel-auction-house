@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { SocketIoAdapter } from './realtime/socket-io.adapter.js';
 
 // Shared by main.ts and the e2e tests so both run with the same configuration.
 export function configureApp(app: INestApplication): void {
@@ -18,8 +19,11 @@ export function configureApp(app: INestApplication): void {
     }),
   );
 
+  // Same allowed origins for HTTP and WebSocket. Read at runtime (after .env is
+  // loaded), not in a decorator.
   const origins = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim());
   app.enableCors({ origin: origins, credentials: true });
+  app.useWebSocketAdapter(new SocketIoAdapter(app, origins));
 }

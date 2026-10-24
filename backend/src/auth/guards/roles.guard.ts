@@ -27,9 +27,14 @@ export class RolesGuard implements CanActivate {
     );
     if (!roles || roles.length === 0) return true;
 
-    const user = context
-      .switchToHttp()
-      .getRequest<Request & { user?: AuthUser }>().user;
+    // HTTP: set by JwtAuthGuard. WebSocket: set in the handshake (RealtimeGateway).
+    const user =
+      context.getType() === 'ws'
+        ? context
+            .switchToWs()
+            .getClient<{ data?: { user?: AuthUser | null } }>().data?.user
+        : context.switchToHttp().getRequest<Request & { user?: AuthUser }>()
+            .user;
     if (user && roles.includes(user.role)) return true;
 
     const allowed = roles.map((role) => ROLE_LABELS[role]).join(' ou ');

@@ -171,6 +171,22 @@ As respostas têm o formato `{ data, stale, fetchedAt }`.
 
 Os testes e2e provam a concorrência de forma determinística: uma conexão separada segura a trava enquanto dois lances são disparados; ao liberar, exatamente um é aceito. Removendo o `FOR UPDATE` do código, esses testes falham.
 
+## Tempo real (Socket.IO)
+
+O front conecta no mesmo endereço da API (`io(API_URL, { auth: { token } })`). Sem token, a conexão é anônima (vitrine e salas são públicas); com token inválido ou expirado a conexão é recusada (`connect_error: UNAUTHORIZED`), para o front pedir novo login.
+
+| Sala         | Como entra                          | Eventos recebidos                                                           |
+| ------------ | ----------------------------------- | --------------------------------------------------------------------------- |
+| `lot:{id}`   | `emit('lot:join', { lotId })`       | `lot:bid` (lance, estado do lote, `extended`, `serverTime`), `lot:cancelled` |
+| `showcase`   | `emit('showcase:join')`             | `showcase:update` (lance atual de cada card), `lot:cancelled`               |
+| `user:{id}`  | automática ao conectar com token    | `user:outbid` (você foi superado), `wallet:updated`                         |
+
+- Os eventos são emitidos **depois do commit** da transação: ninguém é avisado de um lance que foi desfeito.
+- Eventos públicos só têm pseudônimos; os avisos pessoais vão apenas para a sala privada do usuário.
+- "Você está ganhando / foi superado": o front compara o pseudônimo do lance recebido com o seu (`GET /lots/:id/my-status`); o líder anterior também recebe `user:outbid`.
+- `serverTime` acompanha os eventos para a contagem regressiva usar o relógio do servidor, não o do navegador.
+- Ao reconectar, o cliente deve entrar de novo nas salas e recarregar o estado pela API (eventos perdidos durante a queda não são reenviados).
+
 ## Histórico à prova de adulteração
 
 Técnica: **corrente de hashes (hash chain) + assinatura digital Ed25519**.

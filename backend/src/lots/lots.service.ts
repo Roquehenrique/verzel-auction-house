@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuctionEventsService } from '../realtime/auction-events.service.js';
 import { VehiclesService } from '../vehicles/vehicles.service.js';
 import { CreateLotDto, VehicleAttributesDto } from './dto/create-lot.dto.js';
 import { ListLotsDto } from './dto/list-lots.dto.js';
@@ -40,6 +41,7 @@ export class LotsService {
     private readonly prisma: PrismaService,
     private readonly vehicles: VehiclesService,
     private readonly images: LotImageService,
+    private readonly events: AuctionEventsService,
   ) {}
 
   async create(auctioneerId: string, dto: CreateLotDto) {
@@ -179,7 +181,7 @@ export class LotsService {
   }
 
   async cancel(auctioneerId: string, lotId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const cancelled = await this.prisma.$transaction(async (tx) => {
       // Locks the lot row: a bid arriving at the same time waits for this
       // transaction (and vice versa), so a cancelled lot can never get a bid.
       await tx.$queryRaw`SELECT id FROM lots WHERE id = ${lotId}::uuid FOR UPDATE`;
@@ -206,13 +208,15 @@ export class LotsService {
         );
       }
 
-      const cancelled = await tx.lot.update({
+      const updated = await tx.lot.update({
         where: { id: lotId },
         data: { cancelledAt: now },
         include: withAuctioneer,
       });
-      return toPublicLot(cancelled, now);
+      return toPublicLot(updated, now);
     });
+    this.events.lotCancelled(lotId); // after the commit
+    return cancelled;
   }
 
   // Names come from the catalog (not from the client) so the lot always matches the API.

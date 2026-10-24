@@ -5,9 +5,22 @@ import { RolesGuard } from './roles.guard.js';
 
 function contextFor(user?: { id: string; role: Role }): ExecutionContext {
   return {
+    getType: () => 'http',
     getHandler: () => undefined,
     getClass: () => undefined,
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
+  } as unknown as ExecutionContext;
+}
+
+// WebSocket: the user is attached to socket.data in the handshake.
+function wsContextFor(
+  user: { id: string; role: Role } | null,
+): ExecutionContext {
+  return {
+    getType: () => 'ws',
+    getHandler: () => undefined,
+    getClass: () => undefined,
+    switchToWs: () => ({ getClient: () => ({ data: { user } }) }),
   } as unknown as ExecutionContext;
 }
 
@@ -41,6 +54,16 @@ describe('RolesGuard', () => {
   it('blocks a request without user on a role-restricted route', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['BIDDER']);
     expect(() => guard.canActivate(contextFor(undefined))).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('reads the socket user on WebSocket messages', () => {
+    vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['BIDDER']);
+    expect(guard.canActivate(wsContextFor({ id: '1', role: 'BIDDER' }))).toBe(
+      true,
+    );
+    expect(() => guard.canActivate(wsContextFor(null))).toThrow(
       ForbiddenException,
     );
   });

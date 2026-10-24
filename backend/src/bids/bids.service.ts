@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { formatBRL } from '../common/money.js';
 import type { Bid } from '../generated/prisma/client.js';
 import { getLotStatus } from '../lots/lot-status.js';
 import { nextMinimumBidCents, toPublicLot } from '../lots/lot.mapper.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuctionEventsService } from '../realtime/auction-events.service.js';
 import { computeBidHash, GENESIS_HASH } from './bid-chain.js';
 import { BidRejectedException } from './bid-rejection.js';
 import { BidSignerService } from './bid-signer.service.js';
@@ -29,6 +30,8 @@ export class BidsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly signer: BidSignerService,
+    // Optional so scripts (seed) can place bids without the WebSocket layer.
+    @Optional() private readonly events?: AuctionEventsService,
   ) {}
 
   async placeBid(userId: string, lotId: string, amountCents: number) {
@@ -159,12 +162,18 @@ export class BidsService {
       { maxWait: 5_000, timeout: 10_000 },
     );
 
-    return {
+    const response = {
       bid: toPublicBid(result.bid),
       lot: toPublicLot(result.lot, result.now),
       extended: result.extended,
-      previousLeaderId: result.previousLeaderId, // internal: used to notify the outbid user
     };
+    // Only after the commit: clients are never told about a rolled-back bid.
+    this.events?.bidPlaced({
+      ...response,
+      bidderId: userId,
+      previousLeaderId: result.previousLeaderId,
+    });
+    return response;
   }
 
   // Public bid history of a lot (newest first), identified only by pseudonyms.

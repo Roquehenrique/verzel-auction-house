@@ -25,17 +25,12 @@ export class BidsController {
   // Only bidders: auctioneers (including the lot owner) cannot bid.
   @Roles('BIDDER')
   @Post('bids')
-  async placeBid(
+  placeBid(
     @CurrentUser() user: AuthUser,
     @Param('id', LotIdPipe) lotId: string,
     @Body() dto: PlaceBidDto,
   ) {
-    const { previousLeaderId: _, ...result } = await this.bids.placeBid(
-      user.id,
-      lotId,
-      dto.amountCents,
-    );
-    return result;
+    return this.bids.placeBid(user.id, lotId, dto.amountCents);
   }
 
   @Public()
