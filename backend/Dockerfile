@@ -22,7 +22,8 @@ ENV NODE_ENV=production \
     PORT=3001
 EXPOSE 3001
 
+# Uses $PORT: hosting platforms (e.g. Render) choose the port at runtime.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=5 \
-  CMD node -e "fetch('http://localhost:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3001)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

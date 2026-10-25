@@ -5,8 +5,15 @@ set -e
 # 1. Secrets. Values given in the environment always win. Otherwise they are
 #    generated once and kept in a volume: the bid signing key must never change,
 #    or the audit would flag every existing bid as tampered.
+#    On hosts with an ephemeral disk (e.g. Render free plan) generated secrets
+#    would be lost on every deploy, so REQUIRE_SECRETS=true makes the start-up
+#    fail instead of silently creating new keys.
 SECRETS_FILE=/app/secrets/generated.env
 if [ -z "$JWT_SECRET" ] || [ -z "$BID_SIGNING_PRIVATE_KEY" ] || [ -z "$PSEUDONYM_SECRET" ]; then
+  if [ "$REQUIRE_SECRETS" = "true" ]; then
+    echo "ERROR: JWT_SECRET, BID_SIGNING_PRIVATE_KEY and PSEUDONYM_SECRET must be set (REQUIRE_SECRETS=true)." >&2
+    exit 1
+  fi
   if [ ! -f "$SECRETS_FILE" ]; then
     echo "Generating secrets (first start) in $SECRETS_FILE"
     mkdir -p "$(dirname "$SECRETS_FILE")"

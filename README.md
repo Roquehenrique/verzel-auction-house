@@ -21,6 +21,19 @@ Casa de leilões online de carros: leiloeiros criam lotes a partir de veículos 
 └── docker-compose.yml  # PostgreSQL, API e front
 ```
 
+## Deploy
+
+| Parte | Serviço | Observação |
+| ----- | ------- | ---------- |
+| Front-end | **Vercel** | Diretório raiz `frontend`, variável `NEXT_PUBLIC_API_URL` |
+| API | **Render** (Docker, plano gratuito) | Criada pelo [`render.yaml`](render.yaml); WebSocket suportado |
+| Banco | **Neon** (PostgreSQL gerenciado) | Conexão direta com `sslmode=require` |
+
+- A API aplica as migrations a cada deploy e carrega os dados de demonstração **apenas se o banco estiver vazio**.
+- No Render os segredos vêm das variáveis de ambiente (`REQUIRE_SECRETS=true`): o disco do plano gratuito é apagado a cada deploy, e uma chave de assinatura nova faria a auditoria acusar todos os lances antigos.
+- **Comportamento esperado do plano gratuito**: a API "dorme" após ~15 min sem acesso; a primeira requisição depois disso leva ~50 s (o front mostra o carregamento e o tempo real reconecta sozinho). Lotes que terminarem enquanto a API dorme são liquidados assim que ela acorda.
+- Variáveis da API: `DATABASE_URL`, `FRONTEND_URL` (domínio da Vercel, para o CORS), `BID_SIGNING_PRIVATE_KEY` (gerada com `npm run keys:generate`), `JWT_SECRET` e `PSEUDONYM_SECRET` (gerados pelo Render).
+
 ## Rodando com Docker (mais simples)
 
 Pré-requisito: Docker (Docker Desktop ou Colima).
