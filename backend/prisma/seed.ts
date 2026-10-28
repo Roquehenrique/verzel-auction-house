@@ -8,7 +8,8 @@ import { SettlementService } from '../src/settlement/settlement.service.js';
 
 // Demo data: 1 auctioneer, 2 bidders with balance and lots in every state.
 // All dates are relative to the moment the seed runs, so running it again
-// "resets" the demo (live lots become live again).
+// "resets" the demo (live lots become live again). Live lots last weeks so a
+// deployed demo still has live auctions when it is evaluated.
 //
 // WARNING: the seed deletes all existing data first.
 
@@ -87,7 +88,7 @@ async function main() {
 
   const lots = [
     {
-      // LIVE, ends in 7 days
+      // LIVE, ends in 28 days
       title: 'Porsche 911 Carrera Cabriolet 2025',
       make: 'Porsche',
       model: '911 Carrera',
@@ -105,10 +106,10 @@ async function main() {
       startingBidCents: reais(650_000),
       minIncrementCents: reais(5_000),
       startsAt: new Date(now - HOUR),
-      endsAt: new Date(now + 7 * DAY),
+      endsAt: new Date(now + 28 * DAY),
     },
     {
-      // LIVE, ends in 2 days
+      // LIVE, ends in 25 days
       title: 'Ford Mustang Hardtop 1965',
       make: 'Ford',
       model: 'Mustang',
@@ -125,10 +126,10 @@ async function main() {
       startingBidCents: reais(180_000),
       minIncrementCents: reais(2_000),
       startsAt: new Date(now - 2 * HOUR),
-      endsAt: new Date(now + 2 * DAY),
+      endsAt: new Date(now + 25 * DAY),
     },
     {
-      // LIVE, ends in 1 day
+      // LIVE, ends in 21 days
       title: 'Chevrolet Opala De Luxo 1978',
       make: 'Chevrolet',
       model: 'Opala',
@@ -145,10 +146,10 @@ async function main() {
       startingBidCents: reais(45_000),
       minIncrementCents: reais(500),
       startsAt: new Date(now - 30 * 60 * 1000),
-      endsAt: new Date(now + DAY),
+      endsAt: new Date(now + 21 * DAY),
     },
     {
-      // SCHEDULED, starts in 1 day
+      // SCHEDULED, starts in 3 days
       title: 'Toyota GR Supra 2020',
       make: 'Toyota',
       model: 'GR Supra',
@@ -164,8 +165,8 @@ async function main() {
       },
       startingBidCents: reais(380_000),
       minIncrementCents: reais(3_000),
-      startsAt: new Date(now + DAY),
-      endsAt: new Date(now + 8 * DAY),
+      startsAt: new Date(now + 3 * DAY),
+      endsAt: new Date(now + 30 * DAY),
     },
     {
       // ENDED with no bids: settlement closes it without a winner

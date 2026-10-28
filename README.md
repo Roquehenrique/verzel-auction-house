@@ -33,6 +33,18 @@ Casa de leilões online de carros: leiloeiros criam lotes a partir de veículos 
 - No Render os segredos vêm das variáveis de ambiente (`REQUIRE_SECRETS=true`): o disco do plano gratuito é apagado a cada deploy, e uma chave de assinatura nova faria a auditoria acusar todos os lances antigos.
 - **Comportamento esperado do plano gratuito**: a API "dorme" após ~15 min sem acesso; a primeira requisição depois disso leva ~50 s (o front mostra o carregamento e o tempo real reconecta sozinho). Lotes que terminarem enquanto a API dorme são liquidados assim que ela acorda.
 - Variáveis da API: `DATABASE_URL`, `FRONTEND_URL` (domínio da Vercel, para o CORS), `BID_SIGNING_PRIVATE_KEY` (gerada com `npm run keys:generate`), `JWT_SECRET` e `PSEUDONYM_SECRET` (gerados pelo Render).
+- Para testar o site, o leiloeiro pode criar a qualquer momento um lote ao vivo de poucos minutos (duração mínima de 5 min) e ver o anti-sniping, a liquidação e o comprovante acontecerem.
+
+**Reiniciar a demonstração em produção** (apaga tudo e recria o seed, com os lotes ao vivo durando semanas). Roda da sua máquina, apontando para o Neon, com os **mesmos** segredos da API; o `.env` local não sobrescreve variáveis já definidas, mas qualquer uma esquecida viria do `.env` de desenvolvimento, por isso as três são passadas explicitamente:
+
+```bash
+cd backend
+NODE_ENV=production SEED_ALLOW_RESET=true \
+DATABASE_URL='<connection string do Neon>' \
+PSEUDONYM_SECRET='<valor do PSEUDONYM_SECRET no Render>' \
+BID_SIGNING_PRIVATE_KEY='<valor do BID_SIGNING_PRIVATE_KEY no Render>' \
+npm run db:seed
+```
 
 ## Rodando com Docker (mais simples)
 
@@ -89,10 +101,10 @@ Lotes criados (datas relativas ao momento em que o seed roda):
 
 | Lote                     | Situação                                                                 |
 | ------------------------ | ------------------------------------------------------------------------ |
-| Porsche 911 Carrera 2025 | Ao vivo (7 dias) — Ana ganhando com R$ 680.000                           |
-| Ford Mustang 1965        | Ao vivo (2 dias) — Bruno ganhando com R$ 190.000                         |
-| Chevrolet Opala 1978     | Ao vivo (1 dia) — sem lances                                             |
-| Toyota GR Supra 2020     | Agendado (começa em 1 dia)                                               |
+| Porsche 911 Carrera 2025 | Ao vivo (28 dias) — Ana ganhando com R$ 680.000                          |
+| Ford Mustang 1965        | Ao vivo (25 dias) — Bruno ganhando com R$ 190.000                        |
+| Chevrolet Opala 1978     | Ao vivo (21 dias) — sem lances                                           |
+| Toyota GR Supra 2020     | Agendado (começa em 3 dias)                                              |
 | Volkswagen Fusca 1966    | Encerrado sem lances (liquidado pelo job ao subir a API)                 |
 | Fiat Uno 2011            | **Arrematado pela Ana** por R$ 32.000, com comprovante (link impresso pelo seed) |
 
