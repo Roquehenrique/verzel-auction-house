@@ -5,8 +5,8 @@ test.describe("Vitrine", () => {
   test("separa lotes ao vivo, agendados e encerrados", async ({ page }) => {
     await page.goto("/");
     const tabs = page.getByRole("tablist");
-    await expect(tabs.getByRole("tab", { name: /Ao vivo/ })).toContainText("3");
-    await expect(tabs.getByRole("tab", { name: /Agendados/ })).toContainText("1");
+    await expect(tabs.getByRole("tab", { name: /Ao vivo/ })).toContainText("9");
+    await expect(tabs.getByRole("tab", { name: /Agendados/ })).toContainText("3");
     await expect(tabs.getByRole("tab", { name: /Encerrados/ })).toContainText("2");
 
     await expect(page.getByRole("heading", { name: /Porsche 911/ })).toBeVisible();

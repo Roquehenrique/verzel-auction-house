@@ -51,7 +51,12 @@ async function main() {
   migrateDeploy(E2E_DATABASE_URL);
 
   execSync('npx prisma db seed', {
-    env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
+    // No picture downloads: the tests must not depend on Wikimedia.
+    env: {
+      ...process.env,
+      DATABASE_URL: E2E_DATABASE_URL,
+      SEED_SKIP_IMAGES: 'true',
+    },
     stdio: 'inherit',
   });
 

@@ -2,7 +2,13 @@
 
 Casa de leilões online de carros: leiloeiros criam lotes a partir de veículos buscados em uma API pública e licitantes disputam cada lote com lances ao vivo.
 
-> Documento em construção: será completado ao longo do desenvolvimento.
+| | |
+| --- | --- |
+| **Aplicação** | https://verzel-auction-house.vercel.app |
+| **API** | https://casa-de-leiloes-api.onrender.com/api/health |
+| **Contas de teste** | `leiloeiro@leilao.dev`, `ana@leilao.dev`, `bruno@leilao.dev` — senha `Senha@123` (botões prontos na tela de login) |
+
+> A API está no plano gratuito do Render e "dorme" sem uso: **o primeiro acesso pode levar ~50 s**. Veja [Comportamentos inesperados e limitações](#comportamentos-inesperados-e-limitações).
 
 ## Stack
 
@@ -25,8 +31,8 @@ Casa de leilões online de carros: leiloeiros criam lotes a partir de veículos 
 
 | Parte | Serviço | Observação |
 | ----- | ------- | ---------- |
-| Front-end | **Vercel** | Diretório raiz `frontend`, variável `NEXT_PUBLIC_API_URL` |
-| API | **Render** (Docker, plano gratuito) | Criada pelo [`render.yaml`](render.yaml); WebSocket suportado |
+| Front-end | **Vercel** — https://verzel-auction-house.vercel.app | Diretório raiz `frontend`, variável `NEXT_PUBLIC_API_URL` (tipo *Config*, com `/api` no fim) |
+| API | **Render** (Docker, plano gratuito) — https://casa-de-leiloes-api.onrender.com/api | Criada pelo [`render.yaml`](render.yaml); WebSocket suportado |
 | Banco | **Neon** (PostgreSQL gerenciado) | Conexão direta com `sslmode=require` |
 
 - A API aplica as migrations a cada deploy e carrega os dados de demonstração **apenas se o banco estiver vazio**.
@@ -96,6 +102,7 @@ Todos os usuários usam a senha `Senha@123`.
 | `leiloeiro@leilao.dev` | Leiloeiro | —              |
 | `ana@leilao.dev`       | Licitante | R$ 1.000.000   |
 | `bruno@leilao.dev`     | Licitante | R$ 800.000     |
+| `carla@leilao.dev`     | Licitante | R$ 1.500.000 (só participa de disputas, para haver lotes em que Ana e Bruno foram superados) |
 
 Lotes criados (datas relativas ao momento em que o seed roda):
 
@@ -103,12 +110,20 @@ Lotes criados (datas relativas ao momento em que o seed roda):
 | ------------------------ | ------------------------------------------------------------------------ |
 | Porsche 911 Carrera 2025 | Ao vivo (28 dias) — Ana ganhando com R$ 680.000                          |
 | Ford Mustang 1965        | Ao vivo (25 dias) — Bruno ganhando com R$ 190.000                        |
+| Chevrolet Camaro 2SS 2019 | Ao vivo (10 dias) — Carla ganhando, Bruno superado                      |
+| Honda Civic 2017         | Ao vivo (12 dias) — Carla ganhando, Ana superada                         |
+| Jeep Wrangler 2018       | Ao vivo (15 dias) — Carla com o único lance                              |
+| Volkswagen Golf 2013     | Ao vivo (18 dias) — sem lances                                           |
 | Chevrolet Opala 1978     | Ao vivo (21 dias) — sem lances                                           |
+| Toyota Corolla Hatch 2018 | Ao vivo (23 dias) — sem lances                                          |
+| BMW M3 Competition 2022  | Ao vivo (27 dias) — sem lances                                           |
+| Nissan GT-R 2010         | Agendado (começa em 1 dia)                                               |
 | Toyota GR Supra 2020     | Agendado (começa em 3 dias)                                              |
+| Mercedes-AMG SL 43 2023  | Agendado (começa em 5 dias)                                              |
 | Volkswagen Fusca 1966    | Encerrado sem lances (liquidado pelo job ao subir a API)                 |
 | Fiat Uno 2011            | **Arrematado pela Ana** por R$ 32.000, com comprovante (link impresso pelo seed) |
 
-Os lances e a liquidação do seed passam pelos mesmos serviços da aplicação (mesmas regras, hash, assinatura e comprovante). Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
+Os lances e a liquidação do seed passam pelos mesmos serviços da aplicação (mesmas regras, hash, assinatura e comprovante). Como nos lotes criados pelo app, o seed guarda uma **cópia de cada foto** no banco (baixadas uma a uma, porque a Wikimedia responde `429` a rajadas); os testes e2e pulam esse download (`SEED_SKIP_IMAGES=true`) para não depender da internet. Rodar `npm run db:seed` de novo restaura esse estado. Em produção o seed só roda com `SEED_ALLOW_RESET=true`.
 
 ## Banco de dados
 
@@ -339,3 +354,34 @@ Todos exigem o Postgres do docker-compose rodando e usam **bancos próprios** �
 - auditoria pública (servidor + navegador) e comprovante aberto por link sem login.
 
 Use `npm run test:e2e:ui` para acompanhar os testes no modo visual do Playwright. Na primeira vez, instale o navegador com `npx playwright install chromium`.
+
+## Comportamentos inesperados e limitações
+
+Reunidos aqui para quem for avaliar; os detalhes estão nas seções de cada assunto.
+
+- **Primeiro acesso lento (~50 s)**: a API está no plano gratuito do Render, que desliga o servidor após ~15 min sem uso. Enquanto ela acorda, a vitrine mostra o carregamento; o tempo real reconecta sozinho depois.
+- **Lotes que terminam com a API dormindo** só são liquidados quando ela acorda (o job roda a cada 5 s com a API ligada). Até lá, "Meus arremates" e o painel mostram "aguardando liquidação".
+- **Anti-sniping**: "estende o fim para +2 minutos" foi interpretado como **fim = horário do lance + 2 minutos** (e não "fim atual + 2 min"). Lances seguidos na reta final mantêm sempre 2 minutos de disputa após o último lance.
+- **Catálogo de carros**: a NHTSA só cobre o mercado americano a partir de 1981 — modelos nacionais (Gol, Uno…) e anos antigos não existem lá. Os carros antigos do seed são dados de demonstração. As fotos vêm da Wikipedia e nem sempre são do ano exato; por isso o leiloeiro escolhe entre até 4 sugestões.
+- **Valores em `INTEGER` (centavos)**: lances de até R$ 20.000.000,00 e total recebido por leiloeiro limitado a R$ 21.474.836,47. Em produção real a coluna iria para `BIGINT`.
+- **Auditoria de lote em andamento**: apagar **todos** os lances e zerar o lote ao mesmo tempo, direto no banco, deixaria uma corrente vazia "válida" até a liquidação (depois dela, o comprovante assinado detecta).
+- **Eventos perdidos**: se a conexão em tempo real cair, os eventos do intervalo não são reenviados; ao reconectar o front recarrega o estado pela API.
+- **Pseudônimos**: 6 dígitos hexadecimais por lote — colisão entre dois licitantes do mesmo lote é improvável, mas possível.
+- **Sessão em `localStorage`**: front e API estão em domínios diferentes (cookies de terceiros costumam ser bloqueados); o custo é a exposição a XSS.
+- **Cancelamento**: lotes encerrados não podem ser cancelados (a liquidação é o desfecho deles); lotes com lances exigem motivo e devolvem o valor ao líder.
+- **Dados de demonstração**: qualquer pessoa pode dar lances nos lotes do seed, então o estado em produção muda com o uso. Para restaurar, veja "Reiniciar a demonstração em produção" em [Deploy](#deploy).
+
+## Onde e como usei IA
+
+Usei o **Claude Code** (Anthropic) como par de programação durante todo o projeto, dentro do VS Code.
+
+- **Como trabalhei**: dividi o projeto em etapas (modelagem do banco, autenticação, catálogo externo, lotes, carteira, lances, liquidação, tempo real, auditoria, front-end, testes, Docker, deploy). Em cada etapa a IA propunha e implementava; eu revisava o código, rodava a aplicação e os testes e fazia o commit. Nenhuma etapa avançava sem eu validar a anterior.
+- **Decisões que tomei**: stack (Next.js, NestJS, PostgreSQL), Prisma como ORM, carros como itens do leilão, valores em centavos com o limite de R$ 21,4 milhões documentado, guardar cópia das imagens, interpretação do anti-sniping, regras do cancelamento com estorno (só com motivo), visual com a paleta do documento sem a logo da Verzel, e a hospedagem (Vercel, Render e Neon).
+- **O que a IA fez**: código do back-end e do front-end, testes (Vitest e Playwright), Dockerfiles, `render.yaml`, este README, e investigação de erros com testes no navegador.
+- **O que precisou ser corrigido ou revisado**:
+  - o primeiro teste de concorrência passava **com ou sem** a trava do banco — foi refeito com uma conexão separada segurando a trava, e confirmado que falha quando o `FOR UPDATE` é removido;
+  - o guard global de autenticação bloqueava mensagens do WebSocket;
+  - erros de hidratação do React (o indicador de conexão ficava "desconectado") — a primeira hipótese da IA estava errada e foi descartada com teste antes da correção;
+  - testes Playwright que dependiam da ordem de execução;
+  - os lotes do seed venciam antes da avaliação, e a variável da API no deploy da Vercel estava sem o `/api` — ambos encontrados testando a produção no navegador.
+
